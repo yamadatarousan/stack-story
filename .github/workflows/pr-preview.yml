@@ -42,6 +42,10 @@ jobs:
         vercel-token: ${{ secrets.VERCEL_TOKEN }}
         vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
         vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        NEXTAUTH_URL: https://preview.vercel.app
+        NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
 
     - name: Comment PR with preview URL
       uses: actions/github-script@v7

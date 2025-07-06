@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseGitHubUrl, getRepository, getConfigFiles, getFileStructure } from '@/lib/github';
 import { performFullAnalysis } from '@/lib/analyzer';
+import { saveAnalysisResult } from '@/lib/database-service';
 import { AnalysisError } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -85,6 +86,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: analysisError }, { status: 500 });
     }
 
+    // 5. データベースに保存
+    let savedData;
+    try {
+      savedData = await saveAnalysisResult(analysis);
+    } catch (error) {
+      console.error('Failed to save analysis to database:', error);
+      // データベース保存に失敗してもレスポンスは返す
+    }
+
     return NextResponse.json({
       success: true,
       data: analysis,
@@ -93,6 +103,8 @@ export async function POST(request: NextRequest) {
         owner,
         repo,
         analysisVersion: '1.0.0',
+        saved: !!savedData,
+        analysisId: savedData?.analysis?.id,
       },
     });
 

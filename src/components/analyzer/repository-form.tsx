@@ -6,16 +6,19 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Github, ArrowRight, AlertCircle } from 'lucide-react';
 import { AnalysisResult, AnalysisError } from '@/types';
+import { useToast } from '@/components/ui/toast';
 
 interface RepositoryFormProps {
   onAnalysisComplete: (result: AnalysisResult) => void;
   onError: (error: AnalysisError) => void;
+  onAnalysisStart?: (repositoryUrl: string) => void;
 }
 
-export default function RepositoryForm({ onAnalysisComplete, onError }: RepositoryFormProps) {
+export default function RepositoryForm({ onAnalysisComplete, onError, onAnalysisStart }: RepositoryFormProps) {
   const [url, setUrl] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { success, error: showError } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +36,7 @@ export default function RepositoryForm({ onAnalysisComplete, onError }: Reposito
 
     setIsLoading(true);
     setError(null);
+    onAnalysisStart?.(url.trim());
 
     try {
       const response = await fetch('/api/analyze', {
@@ -47,10 +51,12 @@ export default function RepositoryForm({ onAnalysisComplete, onError }: Reposito
 
       if (!response.ok) {
         onError(data.error);
+        showError('分析エラー', data.error?.message || '分析中にエラーが発生しました');
         return;
       }
 
       onAnalysisComplete(data.data);
+      success('分析完了', `${data.data.repository.name} の分析が完了しました`);
     } catch (err) {
       const analysisError: AnalysisError = {
         message: 'Failed to connect to the analysis service',
@@ -59,6 +65,7 @@ export default function RepositoryForm({ onAnalysisComplete, onError }: Reposito
         details: err,
       };
       onError(analysisError);
+      showError('接続エラー', 'サーバーに接続できませんでした');
     } finally {
       setIsLoading(false);
     }

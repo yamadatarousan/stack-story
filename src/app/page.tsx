@@ -5,9 +5,11 @@ import { AnalysisResult, AnalysisError } from '@/types';
 import RepositoryForm from '@/components/analyzer/repository-form';
 import AnalysisResults from '@/components/analyzer/analysis-results';
 import ErrorDisplay from '@/components/analyzer/error-display';
+import AnalysisProgress from '@/components/analyzer/analysis-progress';
 import TechStackVisualizer from '@/components/visualizer/tech-stack-visualizer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { ToastProvider } from '@/components/ui/toast';
 import { Github, Sparkles, BarChart3, FileText } from 'lucide-react';
 
 type AppState = 'initial' | 'analyzing' | 'results' | 'error';
@@ -16,6 +18,12 @@ export default function HomePage() {
   const [state, setState] = useState<AppState>('initial');
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<AnalysisError | null>(null);
+  const [currentRepository, setCurrentRepository] = useState<string>('');
+
+  const handleAnalysisStart = (repositoryUrl: string) => {
+    setCurrentRepository(repositoryUrl);
+    setState('analyzing');
+  };
 
   const handleAnalysisComplete = (result: AnalysisResult) => {
     setAnalysisResult(result);
@@ -41,7 +49,8 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <ToastProvider>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4">
@@ -97,6 +106,7 @@ export default function HomePage() {
             <RepositoryForm 
               onAnalysisComplete={handleAnalysisComplete}
               onError={handleError}
+              onAnalysisStart={handleAnalysisStart}
             />
 
             {/* Features */}
@@ -149,6 +159,13 @@ export default function HomePage() {
           </div>
         )}
 
+        {state === 'analyzing' && (
+          <AnalysisProgress 
+            repository={currentRepository}
+            onCancel={handleNewAnalysis}
+          />
+        )}
+
         {state === 'error' && error && (
           <ErrorDisplay error={error} onRetry={handleRetry} />
         )}
@@ -189,6 +206,7 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
-    </div>
+      </div>
+    </ToastProvider>
   );
 }
