@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTechArticle, generateArticleSummary, getDefaultTemplate, articleTemplates } from '@/lib/openai';
-import { getAnalysisById } from '@/lib/database-service';
-import prisma from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,8 +33,9 @@ export async function POST(request: NextRequest) {
       result = await generateTechArticle(analysisResult, template);
 
       // データベースに保存（analysisIdがある場合）
-      if (analysisResult.analysisId) {
+      if (analysisResult.analysisId && process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('dummy')) {
         try {
+          const prisma = (await import('@/lib/db')).default;
           await prisma.article.create({
             data: {
               title: result.title,

@@ -2,7 +2,7 @@ import { Octokit } from 'octokit';
 import { GitHubRepository, GitHubFile } from '@/types';
 
 const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
+  auth: process.env.GITHUB_TOKEN || undefined,
 });
 
 /**
