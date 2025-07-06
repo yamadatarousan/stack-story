@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 // import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+// import { Label } from '@/components/ui/label';
 import { Upload, FileText, Zap } from 'lucide-react';
 import { TechStackItem, AnalysisResult } from '@/types';
 
@@ -205,22 +205,26 @@ export default function OfflineAnalyzer({ onAnalysisComplete }: OfflineAnalyzerP
         {/* Project Info */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="project-name">プロジェクト名</Label>
+            <label htmlFor="project-name" className="block text-sm font-medium text-gray-700 mb-1">
+              プロジェクト名
+            </label>
             <input
               id="project-name"
               type="text"
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="例: my-awesome-app"
               value={projectInfo.name}
               onChange={(e) => setProjectInfo(prev => ({ ...prev, name: e.target.value }))}
             />
           </div>
           <div>
-            <Label htmlFor="project-description">説明</Label>
+            <label htmlFor="project-description" className="block text-sm font-medium text-gray-700 mb-1">
+              説明
+            </label>
             <input
               id="project-description"
               type="text"
-              className="w-full p-2 border rounded-md"
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="例: 素晴らしいWebアプリケーション"
               value={projectInfo.description}
               onChange={(e) => setProjectInfo(prev => ({ ...prev, description: e.target.value }))}
@@ -230,7 +234,9 @@ export default function OfflineAnalyzer({ onAnalysisComplete }: OfflineAnalyzerP
 
         {/* Package.json Input */}
         <div>
-          <Label htmlFor="package-json">package.json の内容</Label>
+          <label htmlFor="package-json" className="block text-sm font-medium text-gray-700 mb-1">
+            package.json の内容
+          </label>
           <textarea
             id="package-json"
             placeholder="package.jsonの内容をここに貼り付けてください..."
