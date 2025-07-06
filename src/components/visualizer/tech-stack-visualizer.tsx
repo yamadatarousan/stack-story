@@ -47,11 +47,19 @@ export default function TechStackVisualizer({ techStack }: TechStackVisualizerPr
   // 初期化
   useEffect(() => {
     if (techStack.length > 0) {
-      const { nodes: initialNodes, edges: initialEdges } = createFlowElements(techStack);
-      const layoutedNodes = autoLayout(initialNodes);
-      
-      setNodes(layoutedNodes);
-      setEdges(initialEdges);
+      try {
+        console.log('Creating flow elements for tech stack:', techStack);
+        const { nodes: initialNodes, edges: initialEdges } = createFlowElements(techStack);
+        console.log('Initial nodes:', initialNodes.length, 'Initial edges:', initialEdges.length);
+        
+        const layoutedNodes = autoLayout(initialNodes);
+        console.log('Layouted nodes:', layoutedNodes.length);
+        
+        setNodes(layoutedNodes);
+        setEdges(initialEdges);
+      } catch (error) {
+        console.error('Error creating flow elements:', error);
+      }
     }
   }, [techStack, setNodes, setEdges]);
 
@@ -240,12 +248,43 @@ export default function TechStackVisualizer({ techStack }: TechStackVisualizerPr
 
 function getCategoryColor(category: string): string {
   const colors: Record<string, string> = {
+    // 英語カテゴリー
     language: '#8B5CF6',
     framework: '#3B82F6',
     library: '#10B981',
     tool: '#F59E0B',
     database: '#EF4444',
     service: '#06B6D4',
+    build: '#F97316',
+    testing: '#84CC16',
+    styling: '#EC4899',
+    backend: '#6366F1',
+    frontend: '#14B8A6',
+    infrastructure: '#EAB308',
+    cicd: '#8B5A2B',
+    deployment: '#059669',
+    security: '#DC2626',
+    monitoring: '#7C3AED',
+    analytics: '#EA580C',
+    
+    // 日本語カテゴリー
+    '言語': '#8B5CF6',
+    'フレームワーク': '#3B82F6',
+    'ライブラリ': '#10B981',
+    'ツール': '#F59E0B',
+    'データベース': '#EF4444',
+    'サービス': '#06B6D4',
+    'ビルドツール': '#F97316',
+    'テスト': '#84CC16',
+    'スタイリング': '#EC4899',
+    'バックエンド': '#6366F1',
+    'フロントエンド': '#14B8A6',
+    'インフラ': '#EAB308',
+    'CI/CD': '#8B5A2B',
+    'デプロイ': '#059669',
+    'セキュリティ': '#DC2626',
+    'モニタリング': '#7C3AED',
+    'アナリティクス': '#EA580C',
   };
   return colors[category] || '#6B7280';
 }

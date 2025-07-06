@@ -19,14 +19,45 @@ export function createFlowElements(techStack: TechStackItem[]): {
     return acc;
   }, {} as Record<string, TechStackItem[]>);
 
-  // カテゴリーの配置設定
+  // カテゴリーの配置設定（英語・日本語対応）
   const categoryPositions: Record<string, { x: number; y: number; color: string }> = {
+    // 英語カテゴリー
     language: { x: 100, y: 100, color: '#8B5CF6' },
     framework: { x: 300, y: 100, color: '#3B82F6' },
     library: { x: 500, y: 200, color: '#10B981' },
     tool: { x: 300, y: 300, color: '#F59E0B' },
     database: { x: 100, y: 300, color: '#EF4444' },
     service: { x: 500, y: 100, color: '#06B6D4' },
+    build: { x: 700, y: 100, color: '#F97316' },
+    testing: { x: 700, y: 200, color: '#84CC16' },
+    styling: { x: 100, y: 400, color: '#EC4899' },
+    backend: { x: 300, y: 400, color: '#6366F1' },
+    frontend: { x: 500, y: 400, color: '#14B8A6' },
+    infrastructure: { x: 700, y: 300, color: '#EAB308' },
+    cicd: { x: 100, y: 500, color: '#8B5A2B' },
+    deployment: { x: 300, y: 500, color: '#059669' },
+    security: { x: 500, y: 500, color: '#DC2626' },
+    monitoring: { x: 700, y: 400, color: '#7C3AED' },
+    analytics: { x: 100, y: 600, color: '#EA580C' },
+    
+    // 日本語カテゴリー
+    '言語': { x: 100, y: 100, color: '#8B5CF6' },
+    'フレームワーク': { x: 300, y: 100, color: '#3B82F6' },
+    'ライブラリ': { x: 500, y: 200, color: '#10B981' },
+    'ツール': { x: 300, y: 300, color: '#F59E0B' },
+    'データベース': { x: 100, y: 300, color: '#EF4444' },
+    'サービス': { x: 500, y: 100, color: '#06B6D4' },
+    'ビルドツール': { x: 700, y: 100, color: '#F97316' },
+    'テスト': { x: 700, y: 200, color: '#84CC16' },
+    'スタイリング': { x: 100, y: 400, color: '#EC4899' },
+    'バックエンド': { x: 300, y: 400, color: '#6366F1' },
+    'フロントエンド': { x: 500, y: 400, color: '#14B8A6' },
+    'インフラ': { x: 700, y: 300, color: '#EAB308' },
+    'CI/CD': { x: 100, y: 500, color: '#8B5A2B' },
+    'デプロイ': { x: 300, y: 500, color: '#059669' },
+    'セキュリティ': { x: 500, y: 500, color: '#DC2626' },
+    'モニタリング': { x: 700, y: 400, color: '#7C3AED' },
+    'アナリティクス': { x: 100, y: 600, color: '#EA580C' },
   };
 
   let nodeId = 0;
@@ -93,7 +124,7 @@ function createTechRelationships(
 ): void {
   const techNodes = nodes.filter(node => node.type === 'tech');
   
-  // 一般的な技術関係のマッピング
+  // 一般的な技術関係のマッピング（英語・日本語対応）
   const relationships: Record<string, string[]> = {
     'React': ['TypeScript', 'JavaScript', 'Next.js'],
     'Next.js': ['React', 'TypeScript'],
@@ -106,6 +137,14 @@ function createTechRelationships(
     'Tailwind CSS': ['PostCSS'],
     'Webpack': ['Babel'],
     'Vite': ['TypeScript', 'JavaScript'],
+    'Express.js': ['Node.js', 'JavaScript', 'TypeScript'],
+    'Fastify': ['Node.js', 'JavaScript', 'TypeScript'],
+    'Docker': ['Docker Compose'],
+    'GitHub Actions': ['Docker', 'Node.js'],
+    'Vercel': ['Next.js', 'React'],
+    'Netlify': ['Vue.js', 'React'],
+    
+    // 日本語での関係性も追加できるが、現在は英語名を基準とする
   };
 
   techNodes.forEach(sourceNode => {
@@ -137,8 +176,11 @@ function createTechRelationships(
  * 自動レイアウト - より良い配置を計算
  */
 export function autoLayout(nodes: FlowNode[]): FlowNode[] {
-  const categories = ['language', 'framework', 'library', 'tool', 'database', 'service'];
-  const nodesPerRow = 3;
+  const categories = [
+    'language', 'framework', 'library', 'tool', 'database', 'service', 'build', 'testing', 'styling', 'backend', 'frontend', 'infrastructure', 'cicd', 'deployment', 'security', 'monitoring', 'analytics',
+    '言語', 'フレームワーク', 'ライブラリ', 'ツール', 'データベース', 'サービス', 'ビルドツール', 'テスト', 'スタイリング', 'バックエンド', 'フロントエンド', 'インフラ', 'CI/CD', 'デプロイ', 'セキュリティ', 'モニタリング', 'アナリティクス'
+  ];
+  const nodesPerRow = 4;
   const nodeSpacing = { x: 200, y: 150 };
   const categorySpacing = { x: 50, y: 50 };
 

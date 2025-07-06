@@ -6,7 +6,7 @@ import RepositoryForm from '@/components/analyzer/repository-form';
 import AnalysisResults from '@/components/analyzer/analysis-results';
 import ErrorDisplay from '@/components/analyzer/error-display';
 import AnalysisProgress from '@/components/analyzer/analysis-progress';
-import TechStackVisualizer from '@/components/visualizer/tech-stack-visualizer';
+import LazyTechStackVisualizer from '@/components/visualizer/lazy-tech-stack-visualizer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ToastProvider } from '@/components/ui/toast';
@@ -179,7 +179,7 @@ export default function HomePage() {
             />
 
             {/* Visualization */}
-            <TechStackVisualizer techStack={analysisResult.techStack} />
+            <LazyTechStackVisualizer techStack={analysisResult.techStack} />
           </div>
         )}
       </main>
