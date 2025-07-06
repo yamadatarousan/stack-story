@@ -8,7 +8,7 @@ import LoadingSpinner from '@/components/ui/loading-spinner';
 import { Network, Eye } from 'lucide-react';
 
 // 可視化コンポーネントを遅延ロード
-const TechStackVisualizer = lazy(() => import('./tech-stack-visualizer'));
+const TechStackVisualizer = lazy(() => import('./simple-tech-visualizer'));
 
 interface LazyTechStackVisualizerProps {
   techStack: TechStackItem[];

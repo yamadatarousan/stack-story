@@ -391,6 +391,12 @@ export async function performFullAnalysis(
   configFiles: Record<string, string | null>,
   fileStructure: any[]
 ): Promise<AnalysisResult> {
+  console.log('Starting analysis for repository:', repository.name);
+  
+  // 一時的に基本的な解析のみを使用（強化版はデバッグ後に復活）
+  return performBasicAnalysis(repository, configFiles, fileStructure);
+  
+  /*
   try {
     // 強化されたアナライザーを使用
     const enhancedAnalyzer = new EnhancedAnalyzer(
@@ -418,16 +424,19 @@ export async function performFullAnalysis(
     // フォールバック：基本的な解析を実行
     return performBasicAnalysis(repository, configFiles, fileStructure);
   }
+  */
 }
 
 /**
  * 基本的な解析を実行（フォールバック用）
  */
-export function performBasicAnalysis(
+export async function performBasicAnalysis(
   repository: any,
   configFiles: Record<string, string | null>,
   fileStructure: any[]
-): AnalysisResult {
+): Promise<AnalysisResult> {
+  console.log('Starting basic analysis...');
+  
   let techStack: TechStackItem[] = [];
   let dependencies: DependencyInfo[] = [];
   let structure: ProjectStructure = {
@@ -439,21 +448,27 @@ export function performBasicAnalysis(
   };
 
   // package.json の解析
+  console.log('Analyzing package.json...');
   if (configFiles['package.json']) {
     const pkgAnalysis = analyzePackageJson(configFiles['package.json']);
     techStack = [...techStack, ...pkgAnalysis.techStack];
     dependencies = [...dependencies, ...pkgAnalysis.dependencies];
     structure = { ...structure, ...pkgAnalysis.structure };
+    console.log('Package.json analysis completed, techStack count:', techStack.length);
   }
 
   // その他の設定ファイルの解析
+  console.log('Analyzing config files...');
   const configAnalysis = analyzeConfigFiles(configFiles);
   techStack = [...techStack, ...configAnalysis.techStack];
   structure = { ...structure, ...configAnalysis.structure };
+  console.log('Config files analysis completed, techStack count:', techStack.length);
 
   // ファイル構造の解析
+  console.log('Analyzing project structure...');
   const structureAnalysis = analyzeProjectStructure(fileStructure);
   structure = { ...structure, ...structureAnalysis };
+  console.log('Project structure analysis completed');
 
   // 重複を削除
   const uniqueTechStack = techStack.filter(
@@ -477,8 +492,10 @@ export function performBasicAnalysis(
       importance: getFileImportance(path),
     }));
 
+  console.log('Generating summary...');
   const summary = generateSummary(repository, japanizedTechStack, structure);
 
+  console.log('Basic analysis completed successfully');
   return {
     repository,
     techStack: japanizedTechStack,
