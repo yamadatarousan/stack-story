@@ -18,9 +18,9 @@ export interface GitHubFile {
   sha: string;
   size: number;
   url: string;
-  html_url: string;
-  git_url: string;
-  download_url: string;
+  html_url: string | null;
+  git_url: string | null;
+  download_url: string | null;
   type: 'file' | 'dir';
   content?: string;
   encoding?: string;
@@ -102,6 +102,7 @@ export interface FlowNode {
   id: string;
   type: 'tech' | 'category' | 'connection';
   position: { x: number; y: number };
+  hidden?: boolean;
   data: {
     label: string;
     description?: string;
