@@ -1,4 +1,5 @@
 import { TechStackItem, DependencyInfo, ProjectStructure, DetectedFile, AnalysisResult } from '@/types';
+import { EnhancedAnalyzer } from './enhanced-analyzer';
 
 /**
  * package.jsonを解析してTechStackと依存関係を抽出
@@ -383,9 +384,46 @@ function getPackageDescription(name: string): string {
 }
 
 /**
- * 完全な解析を実行
+ * 完全な解析を実行（強化版を使用）
  */
-export function performFullAnalysis(
+export async function performFullAnalysis(
+  repository: any,
+  configFiles: Record<string, string | null>,
+  fileStructure: any[]
+): Promise<AnalysisResult> {
+  try {
+    // 強化されたアナライザーを使用
+    const enhancedAnalyzer = new EnhancedAnalyzer(
+      repository.owner?.login || repository.full_name.split('/')[0],
+      repository.name,
+      configFiles,
+      fileStructure,
+      repository
+    );
+
+    const result = await enhancedAnalyzer.performEnhancedAnalysis();
+    
+    // 日本語化処理
+    result.techStack = result.techStack.map(tech => ({
+      ...tech,
+      name: getJapaneseTechName(tech.name),
+      description: getJapaneseTechDescription(tech.name, tech.description || ''),
+      category: getJapaneseCategoryName(tech.category) as TechStackItem['category'],
+    }));
+
+    return result;
+  } catch (error) {
+    console.error('Enhanced analysis failed, falling back to basic analysis:', error);
+    
+    // フォールバック：基本的な解析を実行
+    return performBasicAnalysis(repository, configFiles, fileStructure);
+  }
+}
+
+/**
+ * 基本的な解析を実行（フォールバック用）
+ */
+export function performBasicAnalysis(
   repository: any,
   configFiles: Record<string, string | null>,
   fileStructure: any[]
@@ -423,6 +461,14 @@ export function performFullAnalysis(
       index === self.findIndex(t => t.name === item.name && t.category === item.category)
   );
 
+  // 日本語化処理
+  const japanizedTechStack = uniqueTechStack.map(tech => ({
+    ...tech,
+    name: getJapaneseTechName(tech.name),
+    description: getJapaneseTechDescription(tech.name, tech.description || ''),
+    category: getJapaneseCategoryName(tech.category) as TechStackItem['category'],
+  }));
+
   const detectedFiles: DetectedFile[] = Object.entries(configFiles)
     .filter(([_, content]) => content !== null)
     .map(([path, _]) => ({
@@ -431,11 +477,11 @@ export function performFullAnalysis(
       importance: getFileImportance(path),
     }));
 
-  const summary = generateSummary(repository, uniqueTechStack, structure);
+  const summary = generateSummary(repository, japanizedTechStack, structure);
 
   return {
     repository,
-    techStack: uniqueTechStack,
+    techStack: japanizedTechStack,
     dependencies,
     structure: structure as ProjectStructure,
     detectedFiles,
@@ -471,16 +517,149 @@ function getFileImportance(path: string): number {
   return 0.5;
 }
 
+/**
+ * 技術名の日本語化
+ */
+function getJapaneseTechName(name: string): string {
+  const japaneseNames: Record<string, string> = {
+    'React': 'React',
+    'Next.js': 'Next.js',
+    'Vue.js': 'Vue.js', 
+    'Angular': 'Angular',
+    'Svelte': 'Svelte',
+    'TypeScript': 'TypeScript',
+    'JavaScript': 'JavaScript',
+    'Python': 'Python',
+    'Java': 'Java',
+    'Go': 'Go',
+    'Rust': 'Rust',
+    'PHP': 'PHP',
+    'Ruby': 'Ruby',
+    'Express.js': 'Express.js',
+    'Fastify': 'Fastify',
+    'Django': 'Django',
+    'FastAPI': 'FastAPI',
+    'Flask': 'Flask',
+    'Spring Boot': 'Spring Boot',
+    'Laravel': 'Laravel',
+    'Ruby on Rails': 'Ruby on Rails',
+    'Tailwind CSS': 'Tailwind CSS',
+    'Docker': 'Docker',
+    'Docker Compose': 'Docker Compose',
+    'PostgreSQL': 'PostgreSQL',
+    'MongoDB': 'MongoDB',
+    'MySQL': 'MySQL',
+    'Redis': 'Redis',
+    'Jest': 'Jest',
+    'Vitest': 'Vitest',
+    'Prisma': 'Prisma',
+    'Webpack': 'Webpack',
+    'Vite': 'Vite',
+    'GitHub Actions': 'GitHub Actions',
+    'Vercel': 'Vercel',
+    'Netlify': 'Netlify',
+    'ESLint': 'ESLint',
+    'Prettier': 'Prettier',
+    'Maven': 'Maven',
+    'Gradle': 'Gradle',
+    'Cargo': 'Cargo',
+    'Composer': 'Composer',
+    'Bundler': 'Bundler',
+  };
+
+  return japaneseNames[name] || name;
+}
+
+/**
+ * 技術説明の日本語化
+ */
+function getJapaneseTechDescription(name: string, originalDescription: string): string {
+  const japaneseDescriptions: Record<string, string> = {
+    'React': 'ユーザーインターフェース構築用JavaScriptライブラリ',
+    'Next.js': 'React用のフルスタックフレームワーク',
+    'Vue.js': 'プログレッシブJavaScriptフレームワーク',
+    'Angular': 'TypeScript用のフルスタックWebアプリケーションフレームワーク',
+    'Svelte': '革新的なWebアプリケーション構築フレームワーク',
+    'TypeScript': 'JavaScriptに静的型付けを追加した言語',
+    'JavaScript': 'Web開発で最も広く使用されるプログラミング言語',
+    'Python': '汎用的で読みやすいプログラミング言語',
+    'Java': 'オブジェクト指向プログラミング言語',
+    'Go': 'Google開発の高速なプログラミング言語',
+    'Rust': 'メモリ安全性に優れたシステムプログラミング言語',
+    'PHP': 'Web開発に特化したサーバーサイドスクリプト言語',
+    'Ruby': '動的で表現力豊かなプログラミング言語',
+    'Express.js': 'Node.js用の軽量Webアプリケーションフレームワーク',
+    'Fastify': '高速なNode.js Webフレームワーク',
+    'Django': 'Python用の高水準Webフレームワーク',
+    'FastAPI': '高速でモダンなPython Webフレームワーク',
+    'Flask': 'Python用のマイクロWebフレームワーク',
+    'Spring Boot': 'Java用のアプリケーションフレームワーク',
+    'Laravel': 'PHP用のWebアプリケーションフレームワーク',
+    'Ruby on Rails': 'Ruby用のWebアプリケーションフレームワーク',
+    'Tailwind CSS': 'ユーティリティファーストCSSフレームワーク',
+    'Docker': 'アプリケーションコンテナ化プラットフォーム',
+    'Docker Compose': 'マルチコンテナDockerアプリケーション管理ツール',
+    'PostgreSQL': '高機能なオープンソースリレーショナルデータベース',
+    'MongoDB': 'ドキュメント指向NoSQLデータベース',
+    'MySQL': '世界で最も人気のあるオープンソースデータベース',
+    'Redis': 'インメモリデータ構造ストア',
+    'Jest': 'JavaScript用テスティングフレームワーク',
+    'Vitest': 'Vite用の高速テスティングフレームワーク',
+    'Prisma': '次世代TypeScript/Node.js用ORM',
+    'Webpack': 'モジュールバンドラー',
+    'Vite': '次世代フロントエンドビルドツール',
+    'GitHub Actions': 'GitHub統合CI/CDプラットフォーム',
+    'Vercel': 'フロントエンド特化型デプロイプラットフォーム',
+    'Netlify': 'JAMstack向けデプロイプラットフォーム',
+    'ESLint': 'JavaScriptコード品質管理ツール',
+    'Prettier': 'コードフォーマッター',
+    'Maven': 'Javaプロジェクト管理・ビルドツール',
+    'Gradle': 'マルチ言語対応ビルドシステム',
+    'Cargo': 'Rustパッケージマネージャー・ビルドツール',
+    'Composer': 'PHPパッケージマネージャー',
+    'Bundler': 'Rubyパッケージマネージャー',
+  };
+
+  return japaneseDescriptions[name] || originalDescription;
+}
+
+/**
+ * カテゴリー名の日本語化
+ */
+function getJapaneseCategoryName(category: string): string {
+  const japaneseCategories: Record<string, string> = {
+    'framework': 'フレームワーク',
+    'library': 'ライブラリ',
+    'language': '言語',
+    'tool': 'ツール',
+    'build': 'ビルドツール',
+    'testing': 'テスト',
+    'styling': 'スタイリング',
+    'database': 'データベース',
+    'backend': 'バックエンド',
+    'frontend': 'フロントエンド',
+    'infrastructure': 'インフラ',
+    'cicd': 'CI/CD',
+    'service': 'サービス',
+    'deployment': 'デプロイ',
+    'security': 'セキュリティ',
+    'monitoring': 'モニタリング',
+    'analytics': 'アナリティクス',
+  };
+
+  return japaneseCategories[category] || category;
+}
+
 function generateSummary(
   repository: any,
   techStack: TechStackItem[],
   structure: ProjectStructure
 ): string {
-  const framework = techStack.find(t => t.category === 'framework')?.name || 'Unknown';
-  const language = structure.language || 'Unknown';
-  const type = structure.type || 'unknown';
+  const framework = techStack.find(t => t.category === 'フレームワーク')?.name || '不明';
+  const language = structure.language || '不明';
+  const type = structure.type || '不明';
   
-  return `This is a ${type} project built with ${framework} using ${language}. ` +
-         `It has ${techStack.length} main technologies and ` +
-         `${structure.hasTests ? 'includes' : 'does not include'} tests.`;
+  return `このプロジェクトは${language}を使用し、${framework}で構築された${type}プロジェクトです。` +
+         `${techStack.length}個の主要技術を使用し、` +
+         `テストは${structure.hasTests ? '含まれています' : '含まれていません'}。`;
 }

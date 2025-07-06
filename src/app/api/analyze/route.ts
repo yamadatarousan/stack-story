@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     // 4. 完全な解析を実行
     let analysis;
     try {
-      analysis = performFullAnalysis(repository, configFiles, fileStructure);
+      analysis = await performFullAnalysis(repository, configFiles, fileStructure);
     } catch (error) {
       const analysisError: AnalysisError = {
         message: 'Failed to perform analysis',

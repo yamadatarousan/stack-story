@@ -97,10 +97,10 @@ export default function AnalysisResults({
                 {result.techStack.length} Technologies
               </Badge>
               <Badge variant="secondary">
-                {result.dependencies.length} Dependencies
+                {result.dependencies?.length || 0} Dependencies
               </Badge>
               <Badge variant="secondary">
-                {result.detectedFiles.length} Config Files
+                {result.detectedFiles?.length || 0} Config Files
               </Badge>
             </div>
             <p className="text-sm text-gray-600">{result.summary}</p>
@@ -117,11 +117,11 @@ export default function AnalysisResults({
       {/* Results Grid */}
       <div className="grid lg:grid-cols-2 gap-6">
         <TechStackDisplay techStack={result.techStack} />
-        <DependenciesDisplay dependencies={result.dependencies} />
+        <DependenciesDisplay dependencies={result.dependencies || []} />
       </div>
 
       {/* Detected Files Summary */}
-      {result.detectedFiles.length > 0 && (
+      {result.detectedFiles && result.detectedFiles.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -129,12 +129,12 @@ export default function AnalysisResults({
               Detected Configuration Files
             </CardTitle>
             <CardDescription>
-              {result.detectedFiles.length} configuration files found and analyzed
+              {result.detectedFiles?.length || 0} configuration files found and analyzed
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-              {result.detectedFiles
+              {(result.detectedFiles || [])
                 .sort((a, b) => b.importance - a.importance)
                 .map((file, index) => (
                   <div

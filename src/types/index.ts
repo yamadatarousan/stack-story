@@ -30,9 +30,10 @@ export interface GitHubFile {
 export interface TechStackItem {
   name: string;
   version?: string;
-  category: 'framework' | 'library' | 'tool' | 'language' | 'database' | 'service';
+  category: 'framework' | 'library' | 'tool' | 'language' | 'database' | 'service' | 'build' | 'testing' | 'styling' | 'backend' | 'frontend' | 'infrastructure' | 'cicd' | 'deployment' | 'security' | 'monitoring' | 'analytics' | 'フレームワーク' | 'ライブラリ' | 'ツール' | '言語' | 'データベース' | 'サービス' | 'ビルドツール' | 'テスト' | 'スタイリング' | 'バックエンド' | 'フロントエンド' | 'インフラ' | 'CI/CD' | 'デプロイ' | 'セキュリティ' | 'モニタリング' | 'アナリティクス';
   description?: string;
   confidence: number; // 0-1
+  usage?: string; // 使用パターンの詳細
 }
 
 export interface DependencyInfo {
@@ -46,21 +47,31 @@ export interface DependencyInfo {
 export interface AnalysisResult {
   repository: GitHubRepository;
   techStack: TechStackItem[];
-  dependencies: DependencyInfo[];
+  dependencies?: DependencyInfo[];
   structure: ProjectStructure;
-  detectedFiles: DetectedFile[];
+  detectedFiles?: DetectedFile[];
   summary: string;
+  languages?: any;
+  analysisId?: string;
+  createdAt?: string;
 }
 
 export interface ProjectStructure {
   type: 'web' | 'mobile' | 'desktop' | 'cli' | 'library' | 'unknown';
-  framework?: string;
+  framework?: string | null;
   language: string;
-  buildTool?: string;
-  packageManager?: string;
+  buildTool?: string | null;
+  packageManager?: string | null;
   hasTests: boolean;
   hasDocumentation: boolean;
   hasCI: boolean;
+  hasLinting?: boolean;
+  hasTypeScript?: boolean;
+  architecture?: string[];
+  codeQuality?: any;
+  cicd?: any;
+  security?: any;
+  performance?: any;
 }
 
 export interface DetectedFile {
