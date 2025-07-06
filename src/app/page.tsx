@@ -7,6 +7,8 @@ import AnalysisResults from '@/components/analyzer/analysis-results';
 import ErrorDisplay from '@/components/analyzer/error-display';
 import AnalysisProgress from '@/components/analyzer/analysis-progress';
 import LazyTechStackVisualizer from '@/components/visualizer/lazy-tech-stack-visualizer';
+import RateLimitInfo from '@/components/analyzer/rate-limit-info';
+import OfflineAnalyzer from '@/components/analyzer/offline-analyzer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ToastProvider } from '@/components/ui/toast';
@@ -167,7 +169,15 @@ export default function HomePage() {
         )}
 
         {state === 'error' && error && (
-          <ErrorDisplay error={error} onRetry={handleRetry} />
+          <div className="space-y-6">
+            <ErrorDisplay error={error} onRetry={handleRetry} />
+            {error.message?.includes('rate limit') && (
+              <>
+                <RateLimitInfo />
+                <OfflineAnalyzer onAnalysisComplete={handleAnalysisComplete} />
+              </>
+            )}
+          </div>
         )}
 
         {state === 'results' && analysisResult && (
