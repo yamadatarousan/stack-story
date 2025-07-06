@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseGitHubUrl, getRepository, getConfigFiles, getFileStructure } from '@/lib/github';
+import { parseGitHubUrl, getRepository, getConfigFiles, getFileStructure, getRateLimit } from '@/lib/github';
 import { performFullAnalysis } from '@/lib/analyzer';
 import { AnalysisError } from '@/types';
 
@@ -24,6 +24,22 @@ export async function POST(request: NextRequest) {
     }
 
     const { owner, repo } = parsed;
+
+    // 0. レート制限をチェック
+    console.log('Checking GitHub API rate limit...');
+    const rateLimit = await getRateLimit();
+    if (rateLimit && rateLimit.rate.remaining < 10) {
+      return NextResponse.json(
+        { 
+          error: {
+            message: 'GitHub API rate limit exceeded. Please try again later.',
+            details: `Remaining: ${rateLimit.rate.remaining}, Reset: ${new Date(rateLimit.rate.reset * 1000)}`
+          }
+        },
+        { status: 429 }
+      );
+    }
+    console.log('Rate limit OK, remaining:', rateLimit?.rate.remaining || 'unknown');
 
     // 1. リポジトリ情報を取得
     let repository;

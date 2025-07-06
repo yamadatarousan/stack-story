@@ -127,12 +127,30 @@ export async function getMultipleFiles(
   paths: string[],
   ref?: string
 ): Promise<Record<string, string | null>> {
-  const results = await Promise.allSettled(
-    paths.map(async (path) => {
-      const content = await getFileContent(owner, repo, path, ref);
-      return { path, content };
-    })
-  );
+  console.log(`Fetching ${paths.length} files from ${owner}/${repo}`);
+  
+  // API制限を回避するため、並行数を制限
+  const BATCH_SIZE = 3;
+  const results: PromiseSettledResult<{ path: string; content: string | null }>[] = [];
+  
+  for (let i = 0; i < paths.length; i += BATCH_SIZE) {
+    const batch = paths.slice(i, i + BATCH_SIZE);
+    console.log(`Fetching batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(paths.length / BATCH_SIZE)}: ${batch.join(', ')}`);
+    
+    const batchResults = await Promise.allSettled(
+      batch.map(async (path) => {
+        const content = await getFileContent(owner, repo, path, ref);
+        return { path, content };
+      })
+    );
+    
+    results.push(...batchResults);
+    
+    // バッチ間で少し待機（レート制限回避）
+    if (i + BATCH_SIZE < paths.length) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  }
 
   const files: Record<string, string | null> = {};
   
@@ -155,38 +173,18 @@ export async function getConfigFiles(
   repo: string,
   ref?: string
 ): Promise<Record<string, string | null>> {
+  // API制限を回避するため、基本的なファイルのみに制限
   const configFiles = [
     'package.json',
     'requirements.txt',
-    'pyproject.toml',
-    'Gemfile',
     'Cargo.toml',
     'go.mod',
     'composer.json',
     'pom.xml',
-    'build.gradle',
-    'build.gradle.kts',
     'Dockerfile',
-    'docker-compose.yml',
-    'docker-compose.yaml',
-    '.env.example',
     'tsconfig.json',
-    'tailwind.config.js',
-    'tailwind.config.ts',
-    'next.config.js',
-    'next.config.ts',
-    'nuxt.config.js',
-    'nuxt.config.ts',
-    'vue.config.js',
-    'angular.json',
-    'nest-cli.json',
-    'deno.json',
-    'bun.lockb',
     'yarn.lock',
     'package-lock.json',
-    'poetry.lock',
-    'Pipfile',
-    'Pipfile.lock',
   ];
 
   return getMultipleFiles(owner, repo, configFiles, ref);
