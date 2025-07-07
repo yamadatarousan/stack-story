@@ -425,10 +425,16 @@ export class PracticalRepositorySummarizer {
       return `${repository.name}: Docker/Kubernetesを使用したコンテナ化・オーケストレーションソリューション`;
     }
     
-    // 最後の手段として、より詳細なフォールバック（汎用的な表現を避ける）
-    const mainLanguage = techStack.find(t => t.category === '言語' || t.category === 'language')?.name || 'Unknown';
+    // 最後の手段として、より詳細なフォールバック（techStack空でもリポジトリ情報を活用）
+    let mainLanguage = techStack.find(t => t.category === '言語' || t.category === 'language')?.name;
     
-    // リポジトリ名から具体的な機能を推論
+    // techStackが空またはlanguageが見つからない場合、リポジトリから推論
+    if (!mainLanguage) {
+      const inferredTech = this.inferTechFromRepository(repository);
+      mainLanguage = inferredTech.name;
+    }
+    
+    // リポジトリ名から具体的な機能を推論（改善された技術名を使用）
     const repoNameAnalysis = this.analyzeRepositoryNameForPurpose(repository.name, mainLanguage);
     if (repoNameAnalysis.confidence > 0.3) {
       return repoNameAnalysis.purpose;
@@ -440,8 +446,104 @@ export class PracticalRepositorySummarizer {
       return techStackPurpose;
     }
     
-    // どうしても特定できない場合は、推論を避けて明確に表現
+    // リポジトリ情報から最終推論
+    const finalPurpose = this.inferPurposeFromRepositoryInfo(repository, mainLanguage);
+    if (finalPurpose) {
+      return finalPurpose;
+    }
+    
+    // 最終フォールバック（推論された技術名を使用）
     return `${repository.name}: ${mainLanguage}実装のソフトウェア（詳細分析中 - より具体的な情報が必要です）`;
+  }
+
+  /**
+   * リポジトリ情報から最終的な目的推論（API失敗時の最後の手段）
+   */
+  private inferPurposeFromRepositoryInfo(repository: any, mainLanguage: string): string | null {
+    const repoName = repository.name.toLowerCase();
+    const description = (repository.description || '').toLowerCase();
+    const githubLanguage = (repository.language || '').toLowerCase();
+    
+    // descriptionが有用な情報を含んでいる場合はそれを使用
+    if (description && description.length > 10) {
+      // GitHub API経由の場合、descriptionが存在するのでそれを活用
+      const meaningfulDesc = this.cleanAndEnhanceDescription(description, repoName, mainLanguage);
+      if (meaningfulDesc) {
+        return meaningfulDesc;
+      }
+    }
+    
+    // リポジトリ名とGitHub言語から詳細推論
+    if (githubLanguage && repoName) {
+      const purposeFromNameAndLang = this.combinedNameLanguagePurpose(repoName, githubLanguage);
+      if (purposeFromNameAndLang) {
+        return purposeFromNameAndLang;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * description を清浄化・拡張
+   */
+  private cleanAndEnhanceDescription(description: string, repoName: string, mainLanguage: string): string | null {
+    // 一般的すぎるdescriptionは使わない
+    const genericTerms = ['a tool', 'a library', 'a framework', 'an application', 'software'];
+    if (genericTerms.some(term => description.startsWith(term))) {
+      return null;
+    }
+    
+    // descriptionが短すぎる場合はenhance
+    if (description.length < 30) {
+      if (description.includes('cli') || description.includes('command')) {
+        return `${repoName}: ${description} - ${mainLanguage}によるコマンドライン・自動化ツール`;
+      }
+      if (description.includes('api') || description.includes('server')) {
+        return `${repoName}: ${description} - ${mainLanguage}によるWeb API・サーバーサービス`;
+      }
+      if (description.includes('web') || description.includes('app')) {
+        return `${repoName}: ${description} - ${mainLanguage}によるWebアプリケーション`;
+      }
+    }
+    
+    // 既に十分詳細な場合はそのまま使用（先頭大文字化）
+    return description.charAt(0).toUpperCase() + description.slice(1);
+  }
+  
+  /**
+   * リポジトリ名と言語の組み合わせから目的推論
+   */
+  private combinedNameLanguagePurpose(repoName: string, githubLanguage: string): string | null {
+    const langDisplayName = githubLanguage.charAt(0).toUpperCase() + githubLanguage.slice(1);
+    
+    // 特定パターンの検出
+    if (repoName.includes('express') && githubLanguage === 'javascript') {
+      return `${repoName}: Express.js による高速・軽量なWeb サーバーアプリケーション`;
+    }
+    
+    if (repoName.includes('cli') && githubLanguage === 'go') {
+      return `${repoName}: Go言語による高性能コマンドライン・システムツール`;
+    }
+    
+    if (repoName.includes('react') && githubLanguage === 'javascript') {
+      return `${repoName}: React による インタラクティブWebユーザーインターフェース`;
+    }
+    
+    // 汎用パターン
+    if (repoName.includes('tool') || repoName.includes('cli')) {
+      return `${repoName}: ${langDisplayName}による開発・運用支援ツール`;
+    }
+    
+    if (repoName.includes('api') || repoName.includes('server')) {
+      return `${repoName}: ${langDisplayName}によるWeb API・バックエンドサービス`;
+    }
+    
+    if (repoName.includes('app') || repoName.includes('web')) {
+      return `${repoName}: ${langDisplayName}によるWebアプリケーション・サービス`;
+    }
+    
+    return null;
   }
 
   /**
@@ -586,11 +688,18 @@ export class PracticalRepositorySummarizer {
       return `${repository.name}の核心機能: 開発者向けライブラリ・フレームワーク機能の提供`;
     }
     
-    // 最終フォールバック（汎用的表現を避ける）
-    const mainTech = techStack[0]?.name || '不明な技術';
-    const techCategory = techStack[0]?.category || '汎用的';
+    // 最終フォールバック（techStackが空でもリポジトリ情報から推論）
+    let mainTech = techStack[0]?.name;
+    let techCategory = techStack[0]?.category || '汎用的';
     
-    // リポジトリ名から機能を推論
+    // techStackが空の場合、リポジトリ情報から技術を推論
+    if (!mainTech) {
+      const inferredTech = this.inferTechFromRepository(repository);
+      mainTech = inferredTech.name;
+      techCategory = inferredTech.category;
+    }
+    
+    // リポジトリ名から機能を推論（改善された技術名を使用）
     const nameBasedFunction = this.inferFunctionFromName(repository.name, mainTech);
     if (nameBasedFunction) {
       return nameBasedFunction;
@@ -602,8 +711,95 @@ export class PracticalRepositorySummarizer {
       return techBasedFunction;
     }
     
-    // どうしても特定できない場合
+    // どうしても特定できない場合でも、推論された技術を使用
     return `${repository.name}: ${mainTech}による機能実装（詳細解析が必要）`;
+  }
+
+  /**
+   * リポジトリ情報から技術を推論（techStack取得失敗時のフォールバック）
+   */
+  private inferTechFromRepository(repository: any): { name: string, category: string } {
+    const repoName = repository.name.toLowerCase();
+    const description = (repository.description || '').toLowerCase();
+    const language = (repository.language || '').toLowerCase();
+    
+    // GitHubのlanguageフィールドから推論（最優先）
+    if (language) {
+      const languageMap: Record<string, { name: string, category: string }> = {
+        'javascript': { name: 'JavaScript', category: '言語' },
+        'typescript': { name: 'TypeScript', category: '言語' },
+        'python': { name: 'Python', category: '言語' },
+        'go': { name: 'Go', category: '言語' },
+        'rust': { name: 'Rust', category: '言語' },
+        'java': { name: 'Java', category: '言語' },
+        'c++': { name: 'C++', category: '言語' },
+        'c': { name: 'C', category: '言語' },
+        'c#': { name: 'C#', category: '言語' },
+        'php': { name: 'PHP', category: '言語' },
+        'ruby': { name: 'Ruby', category: '言語' },
+        'swift': { name: 'Swift', category: '言語' },
+        'kotlin': { name: 'Kotlin', category: '言語' },
+        'scala': { name: 'Scala', category: '言語' },
+        'dart': { name: 'Dart', category: '言語' }
+      };
+      
+      if (languageMap[language]) {
+        return languageMap[language];
+      }
+    }
+    
+    // リポジトリ名から技術推論
+    if (repoName.includes('react') || description.includes('react')) {
+      return { name: 'React', category: 'フレームワーク' };
+    }
+    if (repoName.includes('vue') || description.includes('vue')) {
+      return { name: 'Vue.js', category: 'フレームワーク' };
+    }
+    if (repoName.includes('angular') || description.includes('angular')) {
+      return { name: 'Angular', category: 'フレームワーク' };
+    }
+    if (repoName.includes('express') || description.includes('express')) {
+      return { name: 'Express', category: 'フレームワーク' };
+    }
+    if (repoName.includes('next') || description.includes('next.js')) {
+      return { name: 'Next.js', category: 'フレームワーク' };
+    }
+    if (repoName.includes('spring') || description.includes('spring')) {
+      return { name: 'Spring', category: 'フレームワーク' };
+    }
+    if (repoName.includes('django') || description.includes('django')) {
+      return { name: 'Django', category: 'フレームワーク' };
+    }
+    if (repoName.includes('flask') || description.includes('flask')) {
+      return { name: 'Flask', category: 'フレームワーク' };
+    }
+    if (repoName.includes('docker') || description.includes('docker')) {
+      return { name: 'Docker', category: 'ツール' };
+    }
+    
+    // 用途から技術推論
+    if (repoName.includes('cli') || repoName.includes('tool')) {
+      // CLIツールの場合、言語を優先
+      if (language) {
+        return { name: language.charAt(0).toUpperCase() + language.slice(1), category: '言語' };
+      }
+      return { name: 'CLI', category: 'ツール' };
+    }
+    
+    if (repoName.includes('api') || repoName.includes('server') || description.includes('api')) {
+      return { name: 'Web API', category: 'サービス' };
+    }
+    
+    if (repoName.includes('web') || repoName.includes('app') || description.includes('web')) {
+      return { name: 'Web Application', category: 'アプリケーション' };
+    }
+    
+    // 最終フォールバック（汎用的でも具体的に）
+    if (language) {
+      return { name: language.charAt(0).toUpperCase() + language.slice(1), category: '言語' };
+    }
+    
+    return { name: 'General Software', category: 'ソフトウェア' };
   }
 
   /**
