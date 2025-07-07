@@ -221,25 +221,30 @@ export class GitHubContentFetcher {
 
   // ファイル分類ヘルパーメソッド
   private isReadmeFile(fileName: string): boolean {
-    return fileName.startsWith('readme') && 
-           (fileName.endsWith('.md') || fileName.endsWith('.txt') || !fileName.includes('.'));
+    const name = fileName.toLowerCase();
+    return name.startsWith('readme') && 
+           (name.endsWith('.md') || name.endsWith('.txt') || name.endsWith('.rst') || !name.includes('.'));
   }
 
   private isLicenseFile(fileName: string): boolean {
-    return fileName.startsWith('license') || fileName.startsWith('licence') ||
-           fileName === 'copying' || fileName === 'copyright';
+    const name = fileName.toLowerCase();
+    return name.startsWith('license') || name.startsWith('licence') ||
+           name === 'copying' || name === 'copyright';
   }
 
   private isContributingFile(fileName: string): boolean {
-    return fileName.startsWith('contributing') || fileName.startsWith('contribute');
+    const name = fileName.toLowerCase();
+    return name.startsWith('contributing') || name.startsWith('contribute');
   }
 
   private isChangelogFile(fileName: string): boolean {
-    return fileName.startsWith('changelog') || fileName.startsWith('history') ||
-           fileName.startsWith('releases') || fileName.startsWith('news');
+    const name = fileName.toLowerCase();
+    return name.startsWith('changelog') || name.startsWith('history') ||
+           name.startsWith('releases') || name.startsWith('news');
   }
 
   private isConfigFile(fileName: string): boolean {
+    const name = fileName.toLowerCase();
     const configExtensions = [
       '.json', '.yaml', '.yml', '.toml', '.ini', '.conf', '.config',
       '.env', '.properties', '.xml'
@@ -255,12 +260,13 @@ export class GitHubContentFetcher {
       'pom.xml', 'build.gradle', 'composer.json', 'go.mod'
     ];
 
-    return configFiles.includes(fileName) || 
-           configExtensions.some(ext => fileName.endsWith(ext)) ||
-           fileName.startsWith('.') && fileName.includes('rc');
+    return configFiles.includes(name) || 
+           configExtensions.some(ext => name.endsWith(ext)) ||
+           name.startsWith('.') && name.includes('rc');
   }
 
   private isSourceFile(fileName: string): boolean {
+    const name = fileName.toLowerCase();
     const sourceExtensions = [
       '.js', '.jsx', '.ts', '.tsx', '.vue', '.svelte',
       '.py', '.java', '.kt', '.scala', '.go', '.rs',
@@ -268,9 +274,9 @@ export class GitHubContentFetcher {
       '.rb', '.swift', '.dart', '.elm', '.clj'
     ];
 
-    return sourceExtensions.some(ext => fileName.endsWith(ext)) ||
-           fileName.endsWith('.test.js') || fileName.endsWith('.spec.js') ||
-           fileName.endsWith('.test.ts') || fileName.endsWith('.spec.ts');
+    return sourceExtensions.some(ext => name.endsWith(ext)) ||
+           name.endsWith('.test.js') || name.endsWith('.spec.js') ||
+           name.endsWith('.test.ts') || name.endsWith('.spec.ts');
   }
 
   /**

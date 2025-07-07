@@ -173,8 +173,20 @@ export class EnhancedReadmeAnalyzer {
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.startsWith('# ')) {
-        title = trimmed.replace(/^# /, '').replace(/[*_`]/g, '');
-        break;
+        title = trimmed
+          .replace(/^# /, '') // H1マーカー削除
+          .replace(/[*_`]/g, '') // Markdownスタイル削除
+          .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // リンクをテキストに変換
+          .replace(/!\[([^\]]*)\]\([^)]+\)/g, '') // 画像削除
+          .replace(/\s+/g, ' ') // 複数スペースを単一に
+          .trim();
+        
+        // 有効なタイトルかチェック
+        if (title.length > 0 && title.length < 100 && !title.includes('|')) {
+          break;
+        } else {
+          title = ''; // 無効なタイトルはリセット
+        }
       }
     }
 
