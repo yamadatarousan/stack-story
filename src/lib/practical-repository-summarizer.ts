@@ -1,5 +1,6 @@
 import { githubContentFetcher } from './github-content-fetcher';
 import { enhancedReadmeAnalyzer } from './enhanced-readme-analyzer';
+import { analysisDebugger } from './debug-analyzer';
 import { AnalysisResult } from '@/types';
 
 export interface PracticalRepositorySummary {
@@ -178,13 +179,29 @@ export class PracticalRepositorySummarizer {
     
     console.log('✅ Practical repository summary generated for engineers');
     
-    return {
+    const result = {
       whatAndHow,
       technicalApproach,
       codebaseStructure,
       understandingGuidance,
       practicalSummary
     };
+    
+    // デバッグ情報の生成と分析
+    const debugInfo = analysisDebugger.generateDebugInfo(
+      analysisResult.repository,
+      readmeAnalysis,
+      analysisResult.techStack,
+      result
+    );
+    
+    // 品質スコアが低い場合は警告
+    if (debugInfo.qualityAssessment.overallScore < 60) {
+      console.warn('🚨 LOW QUALITY SUMMARY DETECTED - Attempting improvement...');
+      // TODO: 自動改善ロジックをここに追加
+    }
+    
+    return result;
   }
 
   /**
@@ -401,9 +418,115 @@ export class PracticalRepositorySummarizer {
       return `${repository.name}: Docker/Kubernetesを使用したコンテナ化・オーケストレーションソリューション`;
     }
     
-    // 最後の手段として、より詳細なフォールバック
+    // 最後の手段として、より詳細なフォールバック（汎用的な表現を避ける）
     const mainLanguage = techStack.find(t => t.category === '言語' || t.category === 'language')?.name || 'Unknown';
-    return `${repository.name}: ${mainLanguage}で実装された技術的ソリューション（具体的な機能や目的はREADME.mdで確認してください）`;
+    
+    // リポジトリ名から具体的な機能を推論
+    const repoNameAnalysis = this.analyzeRepositoryNameForPurpose(repository.name, mainLanguage);
+    if (repoNameAnalysis.confidence > 0.3) {
+      return repoNameAnalysis.purpose;
+    }
+    
+    // 技術スタックから具体的な目的を推論
+    const techStackPurpose = this.inferPurposeFromTechStack(techStack, repository.name);
+    if (techStackPurpose) {
+      return techStackPurpose;
+    }
+    
+    // どうしても特定できない場合は、推論を避けて明確に表現
+    return `${repository.name}: ${mainLanguage}実装のソフトウェア（詳細分析中 - より具体的な情報が必要です）`;
+  }
+
+  /**
+   * リポジトリ名から具体的な機能を推論
+   */
+  private analyzeRepositoryNameForPurpose(repoName: string, language: string): { purpose: string, confidence: number } {
+    const name = repoName.toLowerCase();
+    
+    // 高信頼度の推論（具体的なキーワードベース）
+    const highConfidencePatterns = [
+      { pattern: /-?cli$|-?tool$/, purpose: `${repoName}: コマンドライン操作・自動化ツール`, confidence: 0.9 },
+      { pattern: /-?api$|-?server$/, purpose: `${repoName}: Web API・サーバーサイドサービス`, confidence: 0.9 },
+      { pattern: /-?bot$|-?crawler$/, purpose: `${repoName}: 自動化・データ収集ボット`, confidence: 0.9 },
+      { pattern: /-?parser$|-?compiler$/, purpose: `${repoName}: データ解析・コンパイラツール`, confidence: 0.8 },
+      { pattern: /-?generator$|-?builder$/, purpose: `${repoName}: コード・コンテンツ生成ツール`, confidence: 0.8 },
+      { pattern: /-?monitor$|-?tracker$/, purpose: `${repoName}: 監視・追跡システム`, confidence: 0.8 },
+      { pattern: /dashboard$|admin$/, purpose: `${repoName}: 管理・ダッシュボードアプリケーション`, confidence: 0.7 },
+      { pattern: /client$|wrapper$/, purpose: `${repoName}: ${language}用のAPIクライアント・ラッパーライブラリ`, confidence: 0.7 },
+      { pattern: /config$|settings$/, purpose: `${repoName}: 設定・環境管理ツール`, confidence: 0.6 },
+      { pattern: /utils$|helpers$/, purpose: `${repoName}: ${language}開発用ユーティリティ・ヘルパーライブラリ`, confidence: 0.6 }
+    ];
+    
+    for (const { pattern, purpose, confidence } of highConfidencePatterns) {
+      if (pattern.test(name)) {
+        return { purpose, confidence };
+      }
+    }
+    
+    // 中程度の信頼度（一般的なキーワード）
+    const mediumConfidencePatterns = [
+      { pattern: /blog|site|website/, purpose: `${repoName}: Webサイト・ブログシステム`, confidence: 0.5 },
+      { pattern: /game|play/, purpose: `${repoName}: ゲーム・エンターテイメントアプリケーション`, confidence: 0.5 },
+      { pattern: /chat|message/, purpose: `${repoName}: チャット・メッセージングシステム`, confidence: 0.5 },
+      { pattern: /data|db|database/, purpose: `${repoName}: データベース・データ管理システム`, confidence: 0.4 },
+      { pattern: /test|mock/, purpose: `${repoName}: テスト・モック用ツール`, confidence: 0.4 }
+    ];
+    
+    for (const { pattern, purpose, confidence } of mediumConfidencePatterns) {
+      if (pattern.test(name)) {
+        return { purpose, confidence };
+      }
+    }
+    
+    return { purpose: '', confidence: 0 };
+  }
+
+  /**
+   * 技術スタックから具体的な目的を推論
+   */
+  private inferPurposeFromTechStack(techStack: any[], repoName: string): string | null {
+    const techs = techStack.map(t => t.name.toLowerCase());
+    const categories = techStack.map(t => t.category.toLowerCase());
+    
+    // 特定の技術組み合わせから目的を推論
+    if (techs.includes('express') && techs.includes('mongodb')) {
+      return `${repoName}: Express + MongoDB による Node.js バックエンドサービス`;
+    }
+    
+    if (techs.includes('react') && techs.includes('typescript')) {
+      return `${repoName}: React + TypeScript による型安全なフロントエンドアプリケーション`;
+    }
+    
+    if (techs.includes('python') && (techs.includes('pandas') || techs.includes('numpy'))) {
+      return `${repoName}: Python によるデータ分析・処理ツール`;
+    }
+    
+    if (techs.includes('docker') && techs.includes('kubernetes')) {
+      return `${repoName}: Docker + Kubernetes による クラウドネイティブアプリケーション`;
+    }
+    
+    if (techs.includes('go') && categories.includes('cli')) {
+      return `${repoName}: Go言語による高性能コマンドラインツール`;
+    }
+    
+    if (techs.includes('rust') && categories.includes('システム')) {
+      return `${repoName}: Rust による高性能システムプログラミング`;
+    }
+    
+    // 単一技術からの基本的な推論
+    if (techs.includes('fastapi') || techs.includes('flask')) {
+      return `${repoName}: Python による Web API・マイクロサービス`;
+    }
+    
+    if (techs.includes('vue') || techs.includes('nuxt')) {
+      return `${repoName}: Vue.js による インタラクティブ Web アプリケーション`;
+    }
+    
+    if (techs.includes('angular')) {
+      return `${repoName}: Angular による エンタープライズ級フロントエンドアプリケーション`;
+    }
+    
+    return null;
   }
 
   private identifyCoreFunction(repository: any, readmeAnalysis: any, techStack: any[]): string {
@@ -456,10 +579,80 @@ export class PracticalRepositorySummarizer {
       return `${repository.name}の核心機能: 開発者向けライブラリ・フレームワーク機能の提供`;
     }
     
-    // 最終フォールバック（より詳細に）
+    // 最終フォールバック（汎用的表現を避ける）
     const mainTech = techStack[0]?.name || '不明な技術';
     const techCategory = techStack[0]?.category || '汎用的';
-    return `${mainTech}(${techCategory})を使用した${repository.name}の実装・運用機能`;
+    
+    // リポジトリ名から機能を推論
+    const nameBasedFunction = this.inferFunctionFromName(repository.name, mainTech);
+    if (nameBasedFunction) {
+      return nameBasedFunction;
+    }
+    
+    // 技術特性から機能を推論
+    const techBasedFunction = this.inferFunctionFromTech(mainTech, repository.name);
+    if (techBasedFunction) {
+      return techBasedFunction;
+    }
+    
+    // どうしても特定できない場合
+    return `${repository.name}: ${mainTech}による機能実装（詳細解析が必要）`;
+  }
+
+  /**
+   * リポジトリ名から機能を推論
+   */
+  private inferFunctionFromName(repoName: string, tech: string): string | null {
+    const name = repoName.toLowerCase();
+    
+    if (name.includes('cli') || name.includes('tool')) {
+      return `${tech}によるコマンドライン自動化・ユーティリティ機能`;
+    }
+    if (name.includes('api') || name.includes('server')) {
+      return `${tech}によるWeb API・バックエンドサービス機能`;
+    }
+    if (name.includes('parser') || name.includes('compiler')) {
+      return `${tech}によるデータ解析・コンパイル処理機能`;
+    }
+    if (name.includes('generator') || name.includes('builder')) {
+      return `${tech}によるコード・コンテンツ生成機能`;
+    }
+    if (name.includes('dashboard') || name.includes('admin')) {
+      return `${tech}による管理・監視ダッシュボード機能`;
+    }
+    if (name.includes('bot') || name.includes('crawler')) {
+      return `${tech}による自動化・データ収集機能`;
+    }
+    
+    return null;
+  }
+
+  /**
+   * 技術特性から機能を推論
+   */
+  private inferFunctionFromTech(tech: string, repoName: string): string | null {
+    const techLower = tech.toLowerCase();
+    
+    if (techLower === 'javascript' || techLower === 'typescript') {
+      return `${tech}によるインタラクティブWeb機能・Node.js処理`;
+    }
+    if (techLower === 'python') {
+      return `${tech}によるデータ処理・自動化スクリプト機能`;
+    }
+    if (techLower === 'go') {
+      return `${tech}による高性能・並行処理システム機能`;
+    }
+    if (techLower === 'rust') {
+      return `${tech}による安全・高速システムプログラミング機能`;
+    }
+    if (techLower === 'java') {
+      return `${tech}によるエンタープライズ・クロスプラットフォーム機能`;
+    }
+    if (techLower === 'c++' || techLower === 'c') {
+      return `${tech}による低レベル・高性能システム機能`;
+    }
+    
+    return null;
   }
 
   private extractQuickStart(readmeAnalysis: any, techStack: any[], structure: any): any {
