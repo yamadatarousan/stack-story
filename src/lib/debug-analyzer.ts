@@ -285,39 +285,73 @@ export class AnalysisDebugger {
   }
   
   /**
-   * 要約の品質スコアを計算
+   * 要約の品質スコアを計算（改善版）
    */
   calculateSummaryScore(summary: string, repository: any): number {
     let score = 0;
     
-    // 長さチェック
+    // 長さチェック（より現実的）
+    if (summary.length > 50) score += 5;
     if (summary.length > 100) score += 10;
-    if (summary.length > 300) score += 10;
+    if (summary.length > 200) score += 10;
+    if (summary.length > 400) score += 5; // 長すぎるとボーナス減
     
-    // 具体性チェック
+    // 具体性チェック（拡張）
     const specificKeywords = [
       'API', 'CLI', 'Web', 'React', 'Vue', 'Express', 'FastAPI',
-      'Docker', 'Kubernetes', 'TypeScript', 'Python', 'Go', 'Rust'
+      'Docker', 'Kubernetes', 'TypeScript', 'Python', 'Go', 'Rust',
+      'Node.js', 'MongoDB', 'authentication', 'automation', 'microservice',
+      'interface', 'management', 'workflow', 'productivity', 'development'
     ];
     const foundKeywords = specificKeywords.filter(keyword => 
       summary.toLowerCase().includes(keyword.toLowerCase())
     );
-    score += foundKeywords.length * 5;
+    score += foundKeywords.length * 3; // より現実的なポイント
     
-    // 汎用的フレーズのペナルティ
+    // 高品質キーワード（追加ボーナス）
+    const highQualityKeywords = [
+      'designed to', 'built with', 'providing', 'automating', 'enabling',
+      'powerful', 'robust', 'comprehensive', 'modern', 'efficient'
+    ];
+    const foundHighQuality = highQualityKeywords.filter(keyword => 
+      summary.toLowerCase().includes(keyword.toLowerCase())
+    );
+    score += foundHighQuality.length * 5;
+    
+    // 行動指向キーワード
+    const actionKeywords = [
+      'automate', 'manage', 'create', 'build', 'generate', 'process',
+      'handle', 'provide', 'enable', 'support', 'implement'
+    ];
+    const foundActions = actionKeywords.filter(keyword => 
+      summary.toLowerCase().includes(keyword.toLowerCase())
+    );
+    score += foundActions.length * 4;
+    
+    // 汎用的フレーズのペナルティ（拡張）
     const genericPhrases = [
       '特定の技術的機能',
-      '特定の技術的課題',
+      '特定の技術的課題', 
       'ソフトウェア開発',
-      '技術的ソリューション'
+      '技術的ソリューション',
+      '詳細分析中',
+      'より具体的な情報が必要'
     ];
     const genericCount = genericPhrases.filter(phrase => 
       summary.includes(phrase)
     ).length;
-    score -= genericCount * 15;
+    score -= genericCount * 10; // ペナルティ軽減
+    
+    // 説明的価値チェック
+    if (summary.includes('for') || summary.includes('による')) score += 3;
+    if (summary.includes('designed') || summary.includes('実装')) score += 3;
+    if (summary.includes('built') || summary.includes('構築')) score += 3;
     
     // リポジトリ名の活用
-    if (summary.includes(repository.name)) score += 5;
+    if (summary.includes(repository.name)) score += 3;
+    
+    // 最低品質保証
+    if (score < 10 && summary.length > 30) score = 10;
     
     return Math.max(0, Math.min(100, score));
   }

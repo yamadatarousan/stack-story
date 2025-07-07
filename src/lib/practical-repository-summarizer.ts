@@ -208,6 +208,13 @@ export class PracticalRepositorySummarizer {
    * README intelligence extraction (enhanced for practical use)
    */
   private async extractReadmeIntelligence(analysisResult: AnalysisResult): Promise<any> {
+    // Check if mock README data is provided for testing
+    const mockReadme = (analysisResult as any).mockReadme;
+    if (mockReadme) {
+      console.log('📖 Using mock README data for testing:', mockReadme.title);
+      return mockReadme;
+    }
+    
     try {
       const repoUrl = analysisResult.repository.html_url;
       const urlParts = repoUrl.replace('https://github.com/', '').split('/');
