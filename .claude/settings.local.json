@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mcp add:*)",
+      "Bash(exit)"
+    ],
+    "deny": []
+  }
+}

@@ -37,6 +37,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "reactflow": "^11.11.4",
+    "semver": "^7.7.2",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
@@ -48,6 +49,7 @@
     "@types/node": "^20.19.4",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "@types/semver": "^7.7.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
     "jest": "^30.0.4",

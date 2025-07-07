@@ -10,6 +10,8 @@ import LazyTechStackVisualizer from '@/components/visualizer/lazy-tech-stack-vis
 import RateLimitInfo from '@/components/analyzer/rate-limit-info';
 import OfflineAnalyzer from '@/components/analyzer/offline-analyzer';
 import LocalAnalyzerForm from '@/components/analyzer/local-analyzer-form';
+import SecurityAnalyzer from '@/components/analyzer/security-analyzer';
+import RepositorySummaryComponent from '@/components/analyzer/repository-summary';
 import SelfImprovementDashboard from '@/components/self-improvement/self-improvement-dashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -227,6 +229,16 @@ export default function HomePage() {
               result={analysisResult}
               onNewAnalysis={handleNewAnalysis}
               onGenerateImprovements={handleGenerateImprovements}
+            />
+
+            {/* Repository Summary */}
+            <RepositorySummaryComponent 
+              analysisResult={analysisResult}
+            />
+
+            {/* Security Analysis */}
+            <SecurityAnalyzer 
+              repositoryPath={currentRepository}
             />
 
             {/* Visualization */}

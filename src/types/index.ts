@@ -67,6 +67,8 @@ export interface AnalysisResult {
   maturityLevel?: any;
   deepAnalysis?: any;
   narrativeReport?: any;
+  // 新しいリポジトリ要約
+  repositorySummary?: RepositorySummary;
 }
 
 export interface ProjectStructure {
@@ -94,6 +96,100 @@ export interface DetectedFile {
   size: number;
   importance: number; // 0-10
   analysis?: string;
+}
+
+// Repository Summary types
+export interface RepositorySummary {
+  // 基本概要
+  description: string;              // 1-2文でのプロジェクト説明
+  oneLineSummary: string;          // 一行要約
+  purpose: string;                 // 主な目的・解決する問題
+  category: ProjectCategory;       // プロジェクトカテゴリ
+  
+  // ターゲット・機能
+  targetUsers: string[];           // ターゲットユーザー
+  keyFeatures: string[];           // 主要機能・特徴
+  useCases: string[];             // 使用場面・用途
+  
+  // 技術的評価
+  technicalComplexity: TechnicalComplexity;
+  maintainabilityScore: number;    // 0-100
+  codeQuality: CodeQuality;
+  
+  // プロジェクト状態
+  maturityLevel: MaturityLevel;
+  developmentStatus: DevelopmentStatus;
+  
+  // アーキテクチャ理解
+  architecturePattern: string[];   // 使用されているアーキテクチャパターン
+  designPrinciples: string[];      // 設計原則
+  scalabilityAssessment: ScalabilityAssessment;
+  
+  // 改善提案
+  recommendations: Recommendation[];
+  potentialIssues: string[];       // 潜在的な問題
+  
+  // メタデータ
+  analysisConfidence: number;      // 0-100
+  lastAnalyzed: string;
+}
+
+export type ProjectCategory = 
+  | 'web-application'     // Webアプリケーション
+  | 'mobile-application'  // モバイルアプリ
+  | 'desktop-application' // デスクトップアプリ
+  | 'library'            // ライブラリ・フレームワーク
+  | 'cli-tool'           // コマンドラインツール
+  | 'api-service'        // API・サービス
+  | 'development-tool'   // 開発ツール
+  | 'game'              // ゲーム
+  | 'documentation'     // ドキュメント・サイト
+  | 'template'          // テンプレート・ボイラープレート
+  | 'plugin'            // プラグイン・拡張
+  | 'educational'       // 学習・チュートリアル
+  | 'experiment'        // 実験・プロトタイプ
+  | 'unknown';          // 不明
+
+export type TechnicalComplexity = 'beginner' | 'intermediate' | 'advanced' | 'expert';
+
+export interface CodeQuality {
+  score: number;                   // 0-100
+  testCoverage: 'none' | 'low' | 'medium' | 'high';
+  documentation: 'none' | 'basic' | 'good' | 'excellent';
+  codeStyle: 'inconsistent' | 'basic' | 'good' | 'excellent';
+  errorHandling: 'none' | 'basic' | 'good' | 'excellent';
+  modularity: 'monolithic' | 'basic' | 'good' | 'excellent';
+}
+
+export type MaturityLevel = 
+  | 'prototype'     // プロトタイプ
+  | 'alpha'        // アルファ版
+  | 'beta'         // ベータ版
+  | 'stable'       // 安定版
+  | 'mature'       // 成熟版
+  | 'legacy';      // レガシー
+
+export type DevelopmentStatus = 
+  | 'active'       // 活発な開発
+  | 'maintained'   // 保守中
+  | 'stagnant'     // 停滞
+  | 'abandoned';   // 放棄
+
+export interface ScalabilityAssessment {
+  score: number;                   // 0-100
+  horizontalScaling: 'poor' | 'fair' | 'good' | 'excellent';
+  verticalScaling: 'poor' | 'fair' | 'good' | 'excellent';
+  performanceOptimization: 'none' | 'basic' | 'good' | 'excellent';
+  caching: 'none' | 'basic' | 'good' | 'excellent';
+}
+
+export interface Recommendation {
+  type: 'security' | 'performance' | 'maintainability' | 'architecture' | 'tooling';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  title: string;
+  description: string;
+  effort: 'low' | 'medium' | 'high';
+  impact: 'low' | 'medium' | 'high';
 }
 
 // Article Generation types

@@ -1,0 +1,29 @@
+
+> stack-story@0.1.0 dev
+> next dev --turbopack
+
+ ⚠ Port 3000 is in use, using available port 3002 instead.
+   ▲ Next.js 15.3.5 (Turbopack)
+   - Local:        http://localhost:3002
+   - Network:      http://192.168.10.101:3002
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1594ms
+ ○ Compiling / ...
+ ✓ Compiled / in 3.7s
+ GET / 200 in 4250ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 627ms
+ GET /favicon.ico?favicon.45db1c09.ico 200 in 914ms
+ ○ Compiling /api/analyze ...
+ ✓ Compiled /api/analyze in 759ms
+Checking GitHub API rate limit...
+Rate limit OK, remaining: 49
+Error fetching repository: Error [HttpError]: Not Found - https://docs.github.com/rest/repos/repos#get-a-repository
+    at <unknown> (HttpError: Not Found - https://docs.github.com/rest/repos/repos#get-a-repository) {
+  status: 404,
+  request: [Object],
+  response: [Object]
+}
+ POST /api/analyze 404 in 1253ms
