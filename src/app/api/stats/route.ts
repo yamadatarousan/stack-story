@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getTechStackStats } from '@/lib/database-service';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const stats = await getTechStackStats();
 

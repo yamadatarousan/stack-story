@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,13 @@ interface Repository {
   analyses: Array<{
     id: string;
     createdAt: string;
-    techStack: any[];
+    techStack: Array<{
+      name: string;
+      version: string;
+      category: string;
+      description?: string;
+      confidence?: number;
+    }>;
   }>;
 }
 
@@ -47,11 +53,7 @@ export default function AnalysisHistory({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchHistory();
-  }, [type, limit]);
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -59,17 +61,22 @@ export default function AnalysisHistory({
       const response = await fetch(`/api/history?type=${type}&limit=${limit}`);
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error?.message || 'Failed to fetch history');
+      if (data.success) {
+        setRepositories(data.repositories);
+      } else {
+        setError(data.error || 'Failed to fetch history');
       }
-
-      setRepositories(data.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+    } catch {
+      setError('Failed to fetch repository history');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [type, limit]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ja-JP', {

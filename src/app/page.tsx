@@ -9,12 +9,15 @@ import AnalysisProgress from '@/components/analyzer/analysis-progress';
 import LazyTechStackVisualizer from '@/components/visualizer/lazy-tech-stack-visualizer';
 import RateLimitInfo from '@/components/analyzer/rate-limit-info';
 import OfflineAnalyzer from '@/components/analyzer/offline-analyzer';
+import LocalAnalyzerForm from '@/components/analyzer/local-analyzer-form';
+import SelfImprovementDashboard from '@/components/self-improvement/self-improvement-dashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ToastProvider } from '@/components/ui/toast';
+import { Button } from '@/components/ui/button';
 import { Github, Sparkles, BarChart3, FileText } from 'lucide-react';
 
-type AppState = 'initial' | 'analyzing' | 'results' | 'error';
+type AppState = 'initial' | 'analyzing' | 'results' | 'error' | 'self-improvement';
 
 export default function HomePage() {
   const [state, setState] = useState<AppState>('initial');
@@ -50,6 +53,25 @@ export default function HomePage() {
     setError(null);
   };
 
+  const handleSelfImprovement = () => {
+    setState('self-improvement');
+  };
+
+  const handleStartSelfAnalysis = async () => {
+    console.log('Starting self-analysis...');
+    // 実際の実装では SelfAnalyzer を呼び出し
+  };
+
+  const handleImplementImprovement = (planId: string) => {
+    console.log('Implementing improvement:', planId);
+    // 実際の実装では SafeAutoImprover を呼び出し
+  };
+
+  const handleGenerateImprovements = () => {
+    console.log('Generating repository improvements...');
+    // 実際の実装では RepositoryImprover.generateImprovementPlan() を呼び出し
+  };
+
   return (
     <ToastProvider>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -68,9 +90,20 @@ export default function HomePage() {
                 <p className="text-sm text-gray-600">GitHub Tech Stack Analyzer</p>
               </div>
             </div>
-            <Badge variant="outline" className="bg-white">
-              v1.0.0
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSelfImprovement}
+                className="bg-purple-50 text-purple-700 hover:bg-purple-100"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                AI自己改善
+              </Button>
+              <Badge variant="outline" className="bg-white">
+                v1.0.0
+              </Badge>
+            </div>
           </div>
         </div>
       </header>
@@ -104,7 +137,14 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Form */}
+            {/* Local Analysis Form */}
+            <LocalAnalyzerForm 
+              onAnalysisComplete={handleAnalysisComplete}
+              onError={handleError}
+              onAnalysisStart={handleAnalysisStart}
+            />
+            
+            {/* Original GitHub API Form */}
             <RepositoryForm 
               onAnalysisComplete={handleAnalysisComplete}
               onError={handleError}
@@ -123,7 +163,7 @@ export default function HomePage() {
                 <CardContent>
                   <CardDescription>
                     Automatically detects technologies, frameworks, and dependencies 
-                    from your repository's configuration files.
+                    from your repository&apos;s configuration files.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -153,7 +193,7 @@ export default function HomePage() {
                 <CardContent>
                   <CardDescription>
                     Generate comprehensive technical articles and documentation 
-                    that explain your project's architecture and choices.
+                    that explain your project&apos;s architecture and choices.
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -186,11 +226,19 @@ export default function HomePage() {
             <AnalysisResults 
               result={analysisResult}
               onNewAnalysis={handleNewAnalysis}
+              onGenerateImprovements={handleGenerateImprovements}
             />
 
             {/* Visualization */}
             <LazyTechStackVisualizer techStack={analysisResult.techStack} />
           </div>
+        )}
+
+        {state === 'self-improvement' && (
+          <SelfImprovementDashboard 
+            onStartSelfAnalysis={handleStartSelfAnalysis}
+            onImplementImprovement={handleImplementImprovement}
+          />
         )}
       </main>
 

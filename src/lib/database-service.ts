@@ -1,12 +1,12 @@
 import prisma from '@/lib/db';
-import { AnalysisResult, GitHubRepository, TechStackItem, DependencyInfo, ProjectStructure, DetectedFile } from '@/types';
+import { AnalysisResult, TechStackItem } from '@/types';
 
 /**
  * 分析結果をデータベースに保存
  */
 export async function saveAnalysisResult(analysisResult: AnalysisResult, userId?: string) {
   try {
-    const { repository, techStack, dependencies, structure, detectedFiles, summary } = analysisResult;
+    const { repository, techStack, dependencies, structure } = analysisResult;
 
     // リポジトリを保存または更新
     const savedRepository = await prisma.repository.upsert({
@@ -39,9 +39,9 @@ export async function saveAnalysisResult(analysisResult: AnalysisResult, userId?
     const savedAnalysis = await prisma.analysis.create({
       data: {
         repositoryId: savedRepository.id,
-        techStack: techStack as any, // Prisma JSONフィールド
-        dependencies: dependencies as any,
-        structure: structure as any,
+        techStack: techStack as unknown as object, // Prisma JSONフィールド
+        dependencies: dependencies as unknown as object,
+        structure: structure as unknown as object,
       },
     });
 
@@ -211,7 +211,7 @@ export async function getTechStackStats() {
     const categoryRanks: Record<string, Record<string, number>> = {};
 
     analyses.forEach(analysis => {
-      const techStack = analysis.techStack as TechStackItem[];
+      const techStack = analysis.techStack as unknown as TechStackItem[];
       techStack.forEach(tech => {
         // 技術名でカウント
         techCounts[tech.name] = (techCounts[tech.name] || 0) + 1;

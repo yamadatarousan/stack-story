@@ -1,5 +1,4 @@
 import { AnalysisResult, TechStackItem, GitHubRepository, GitHubFile, ProjectStructure, DependencyInfo } from '@/types';
-import { getFileContent, getDirectoryContents } from './github';
 
 /**
  * 強化された分析エンジン

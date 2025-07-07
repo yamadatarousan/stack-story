@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Clock, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 
 export default function RateLimitInfo() {
-  const [rateLimit, setRateLimit] = useState<any>(null);
+  const [rateLimit, setRateLimit] = useState<{
+    rate: { remaining: number; limit: number; reset: number };
+    search?: { remaining: number; limit: number; reset: number };
+  } | null>(null);
   const [loading, setLoading] = useState(false);
 
   const checkRateLimit = async () => {

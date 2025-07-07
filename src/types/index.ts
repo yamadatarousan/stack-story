@@ -10,6 +10,11 @@ export interface GitHubRepository {
   forks_count: number;
   updated_at: string;
   default_branch: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+    html_url: string;
+  };
 }
 
 export interface GitHubFile {
@@ -54,6 +59,14 @@ export interface AnalysisResult {
   languages?: any;
   analysisId?: string;
   createdAt?: string;
+  // 拡張分析結果
+  projectOverview?: any;
+  architectureInsights?: any;
+  technologyChoices?: any;
+  codeQualityAssessment?: any;
+  maturityLevel?: any;
+  deepAnalysis?: any;
+  narrativeReport?: any;
 }
 
 export interface ProjectStructure {
@@ -75,9 +88,11 @@ export interface ProjectStructure {
 }
 
 export interface DetectedFile {
+  name: string;
   path: string;
   type: 'config' | 'package' | 'source' | 'test' | 'documentation' | 'ci';
-  importance: number; // 0-1
+  size: number;
+  importance: number; // 0-10
   analysis?: string;
 }
 
@@ -141,7 +156,7 @@ export interface ApiError {
 }
 
 export interface AnalysisError extends ApiError {
-  phase: 'github-fetch' | 'file-analysis' | 'dependency-resolution' | 'ai-processing';
+  phase: 'github-fetch' | 'file-analysis' | 'dependency-resolution' | 'ai-processing' | 'validation' | 'git-clone' | 'zip-upload' | 'local-analysis';
   repository?: string;
 }
 

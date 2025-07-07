@@ -19,7 +19,7 @@ interface AnalysisStep {
   title: string;
   description: string;
   status: 'pending' | 'running' | 'completed' | 'error';
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{ className?: string }>;
   estimatedTime?: number;
 }
 
@@ -177,7 +177,7 @@ export default function AnalysisProgress({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <div
                 key={step.id}
                 className={`flex items-start gap-4 p-3 rounded-lg border transition-all ${

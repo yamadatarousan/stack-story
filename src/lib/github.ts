@@ -41,6 +41,11 @@ export async function getRepository(owner: string, repo: string): Promise<GitHub
       forks_count: data.forks_count,
       updated_at: data.updated_at,
       default_branch: data.default_branch,
+      owner: {
+        login: data.owner.login,
+        avatar_url: data.owner.avatar_url,
+        html_url: data.owner.html_url,
+      },
     };
   } catch (error) {
     console.error('Error fetching repository:', error);
@@ -188,6 +193,66 @@ export async function getConfigFiles(
   ];
 
   return getMultipleFiles(owner, repo, configFiles, ref);
+}
+
+/**
+ * ソースコードファイルを取得
+ */
+export async function getSourceFiles(
+  owner: string,
+  repo: string,
+  ref?: string
+): Promise<Record<string, string | null>> {
+  const sourceExtensions = ['.js', '.ts', '.jsx', '.tsx', '.py', '.java', '.go', '.rs', '.php', '.rb'];
+  const files: Record<string, string | null> = {};
+  
+  try {
+    // ルートディレクトリのファイル一覧を取得
+    const rootFiles = await getDirectoryContents(owner, repo, '', ref);
+    
+    // src、lib、appディレクトリのファイルを優先的に取得
+    const importantDirs = ['src', 'lib', 'app', 'pages', 'components'];
+    const sourceFilePaths: string[] = [];
+    
+    for (const dir of importantDirs) {
+      const dirFiles = await getDirectoryContents(owner, repo, dir, ref);
+      dirFiles.forEach(file => {
+        if (file.type === 'file' && sourceExtensions.some(ext => file.name.endsWith(ext))) {
+          sourceFilePaths.push(file.path);
+        }
+      });
+      
+      // サブディレクトリもスキャン（最大1レベル）
+      for (const file of dirFiles) {
+        if (file.type === 'dir') {
+          const subFiles = await getDirectoryContents(owner, repo, file.path, ref);
+          subFiles.forEach(subFile => {
+            if (subFile.type === 'file' && sourceExtensions.some(ext => subFile.name.endsWith(ext))) {
+              sourceFilePaths.push(subFile.path);
+            }
+          });
+        }
+      }
+    }
+    
+    // ルートのソースファイルも取得
+    rootFiles.forEach(file => {
+      if (file.type === 'file' && sourceExtensions.some(ext => file.name.endsWith(ext))) {
+        sourceFilePaths.push(file.path);
+      }
+    });
+    
+    // 重複を除去し、最大20ファイルに制限（API制限対策）
+    const uniquePaths = [...new Set(sourceFilePaths)].slice(0, 20);
+    
+    // ファイル内容をバッチ取得
+    const fileContents = await getMultipleFiles(owner, repo, uniquePaths, ref);
+    
+    return fileContents;
+  } catch (error) {
+    console.error('Error fetching source files:', error);
+    return {};
+  }
 }
 
 /**

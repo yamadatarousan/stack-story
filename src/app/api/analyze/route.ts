@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseGitHubUrl, getRepository, getConfigFiles, getFileStructure, getRateLimit } from '@/lib/github';
+import { parseGitHubUrl, getRepository, getConfigFiles, getFileStructure, getSourceFiles, getRateLimit } from '@/lib/github';
 import { performFullAnalysis } from '@/lib/analyzer';
+import { IntelligentAnalyzer } from '@/lib/intelligent-analyzer';
+import { DeepCodeAnalyzer } from '@/lib/deep-code-analyzer';
 import { AnalysisError } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -86,10 +88,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: analysisError }, { status: 500 });
     }
 
-    // 4. 完全な解析を実行
+    // 4. ソースコードを取得
+    let sourceFiles: Record<string, string | null> = {};
+    try {
+      sourceFiles = await getSourceFiles(owner, repo);
+      console.log(`Fetched ${Object.keys(sourceFiles).length} source files`);
+    } catch (error) {
+      console.error('Failed to fetch source files:', error);
+      // ソースコード取得エラーは無視して継続
+    }
+
+    // 5. ディープ分析を実行
     let analysis;
     try {
-      analysis = await performFullAnalysis(repository, configFiles, fileStructure);
+      // ソースコードが取得できた場合はディープ分析
+      if (Object.keys(sourceFiles).length > 0) {
+        const deepAnalyzer = new DeepCodeAnalyzer(repository, { ...configFiles, ...sourceFiles });
+        const deepAnalysis = await deepAnalyzer.performDeepAnalysis();
+        
+        // 基本分析結果も取得
+        const basicAnalysis = await performFullAnalysis(repository, configFiles, fileStructure);
+        
+        analysis = {
+          ...basicAnalysis,
+          ...deepAnalysis,
+          // ディープ分析結果を追加
+          deepAnalysis: deepAnalysis,
+        };
+      } else {
+        // フォールバック: インテリジェント分析
+        const intelligentAnalyzer = new IntelligentAnalyzer(repository, configFiles, fileStructure);
+        analysis = await intelligentAnalyzer.performIntelligentAnalysis();
+        
+        // 基本分析で補完
+        if (!analysis.techStack.length) {
+          const fallbackAnalysis = await performFullAnalysis(repository, configFiles, fileStructure);
+          analysis.techStack = fallbackAnalysis.techStack;
+          analysis.dependencies = fallbackAnalysis.dependencies;
+        }
+      }
     } catch (error) {
       const analysisError: AnalysisError = {
         message: 'Failed to perform analysis',

@@ -52,6 +52,11 @@ export default function OfflineAnalyzer({ onAnalysisComplete }: OfflineAnalyzerP
           forks_count: 0,
           updated_at: new Date().toISOString(),
           default_branch: 'main',
+          owner: {
+            login: 'offline',
+            avatar_url: '',
+            html_url: '#',
+          },
         },
         techStack,
         dependencies: [],

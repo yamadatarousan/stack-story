@@ -1,5 +1,4 @@
 import { TechStackItem, DependencyInfo, ProjectStructure, DetectedFile, AnalysisResult } from '@/types';
-import { EnhancedAnalyzer } from './enhanced-analyzer';
 
 /**
  * package.jsonを解析してTechStackと依存関係を抽出
@@ -486,9 +485,11 @@ export async function performBasicAnalysis(
 
   const detectedFiles: DetectedFile[] = Object.entries(configFiles)
     .filter(([_, content]) => content !== null)
-    .map(([path, _]) => ({
+    .map(([path, content]) => ({
+      name: path.split('/').pop() || path,
       path,
       type: getFileType(path),
+      size: typeof content === 'string' ? content.length : 0,
       importance: getFileImportance(path),
     }));
 

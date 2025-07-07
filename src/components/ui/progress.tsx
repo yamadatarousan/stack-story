@@ -11,14 +11,14 @@ interface ProgressProps {
   color?: 'blue' | 'green' | 'orange' | 'red';
 }
 
-export default function Progress({
+const Progress = ({
   value,
   max = 100,
   className,
   size = 'md',
   showPercentage = false,
   color = 'blue',
-}: ProgressProps) {
+}: ProgressProps) => {
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
 
   const sizeClasses = {
@@ -52,4 +52,7 @@ export default function Progress({
       )}
     </div>
   );
-}
+};
+
+export { Progress };
+export default Progress;
