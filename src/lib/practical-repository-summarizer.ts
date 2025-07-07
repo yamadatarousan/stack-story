@@ -403,7 +403,7 @@ export class PracticalRepositorySummarizer {
     
     // 最後の手段として、より詳細なフォールバック
     const mainLanguage = techStack.find(t => t.category === '言語' || t.category === 'language')?.name || 'Unknown';
-    return `${repository.name}: ${mainLanguage}で実装された特定の技術的課題を解決するソフトウェアソリューション`;
+    return `${repository.name}: ${mainLanguage}で実装された技術的ソリューション（具体的な機能や目的はREADME.mdで確認してください）`;
   }
 
   private identifyCoreFunction(repository: any, readmeAnalysis: any, techStack: any[]): string {
@@ -467,118 +467,336 @@ export class PracticalRepositorySummarizer {
     const firstSteps: string[] = [];
     const basicUsage: string[] = [];
     
-    // Installation steps from README
+    console.log('🚀 Extracting quick start info:', {
+      hasInstallation: !!readmeAnalysis.installation,
+      hasUsage: !!readmeAnalysis.usage,
+      hasExamples: readmeAnalysis.examples?.length || 0,
+      techStackSize: techStack.length,
+      hasTests: structure.hasTests
+    });
+    
+    // Enhanced installation extraction from README
     if (readmeAnalysis.installation) {
-      if (readmeAnalysis.installation.npm) installation.push(readmeAnalysis.installation.npm);
-      if (readmeAnalysis.installation.pip) installation.push(readmeAnalysis.installation.pip);
-      if (readmeAnalysis.installation.yarn) installation.push(readmeAnalysis.installation.yarn);
-      if (readmeAnalysis.installation.go) installation.push(readmeAnalysis.installation.go);
-      if (readmeAnalysis.installation.cargo) installation.push(readmeAnalysis.installation.cargo);
+      Object.entries(readmeAnalysis.installation).forEach(([key, value]) => {
+        if (value && typeof value === 'string' && value.length > 5) {
+          installation.push(value);
+        }
+      });
     }
     
-    // Default installation based on tech stack
+    // Smarter default installation based on tech stack and project structure
     if (installation.length === 0) {
       const frameworks = techStack.map(t => t.name.toLowerCase());
-      if (frameworks.includes('npm') || structure.packageManager === 'npm') {
+      const categories = techStack.map(t => t.category.toLowerCase());
+      
+      // Node.js projects
+      if (frameworks.includes('npm') || frameworks.includes('node') || structure.packageManager === 'npm') {
         installation.push('npm install');
+        if (structure.hasTests) installation.push('npm test  # Verify installation');
       }
-      if (frameworks.includes('python') || frameworks.includes('pip')) {
+      // Python projects
+      else if (frameworks.includes('python') || frameworks.includes('pip') || categories.includes('python')) {
         installation.push('pip install -r requirements.txt');
+        installation.push('# or: pip install .');
       }
-      if (frameworks.includes('go')) {
+      // Go projects
+      else if (frameworks.includes('go') || categories.includes('go')) {
         installation.push('go mod download');
+        installation.push('go build .');
+      }
+      // Rust projects
+      else if (frameworks.includes('rust') || frameworks.includes('cargo')) {
+        installation.push('cargo build');
+        installation.push('cargo test  # Verify build');
+      }
+      // Docker projects
+      else if (frameworks.includes('docker')) {
+        installation.push('docker build -t project-name .');
+        installation.push('docker run project-name');
+      }
+      // Generic fallback
+      else {
+        installation.push('プロジェクト固有のセットアップ手順をREADMEで確認');
       }
     }
     
-    // First steps
+    // Enhanced first steps extraction
     if (readmeAnalysis.usage && readmeAnalysis.usage.basicUsage) {
       const usageText = readmeAnalysis.usage.basicUsage;
-      const sentences = usageText.split(/[.!?]/).filter((s: string) => s.trim().length > 10);
-      firstSteps.push(...sentences.slice(0, 3).map((s: string) => s.trim()));
-    } else {
-      // Default first steps based on project type
-      if (structure.hasTests) firstSteps.push('テスト実行による動作確認');
-      firstSteps.push('設定ファイルの確認と必要に応じた調整');
-      firstSteps.push('サンプルコードまたはドキュメントの確認');
+      
+      // Extract action-oriented sentences
+      const actionSentences = usageText
+        .split(/[.!?\n]/)
+        .map((s: string) => s.trim())
+        .filter((s: string) => s.length > 10 && s.length < 150)
+        .filter((s: string) => this.isActionableStep(s))
+        .slice(0, 4);
+      
+      if (actionSentences.length > 0) {
+        firstSteps.push(...actionSentences);
+      }
     }
     
-    // Basic usage
-    if (readmeAnalysis.examples && readmeAnalysis.examples.length > 0) {
-      basicUsage.push(`基本的な使用例: ${readmeAnalysis.examples[0].title || '基本実装'}`);
-      if (readmeAnalysis.examples[0].code) {
-        basicUsage.push('提供されたサンプルコードの実行');
-      }
-    } else {
-      // Infer from tech stack
+    // Smart default first steps
+    if (firstSteps.length === 0) {
       const frameworks = techStack.map(t => t.name.toLowerCase());
-      if (frameworks.includes('cli')) {
-        basicUsage.push('コマンドライン引数を指定して実行');
-      } else if (frameworks.includes('library')) {
-        basicUsage.push('import/require してAPIを呼び出し');
+      
+      if (structure.hasTests) firstSteps.push('テスト実行で動作確認: npm test または適切なテストコマンド');
+      
+      if (frameworks.includes('api') || frameworks.includes('server')) {
+        firstSteps.push('サーバー起動: npm start または適切な起動コマンド');
+        firstSteps.push('APIエンドポイントの動作確認（curlやPostmanでテスト）');
+      } else if (frameworks.includes('web') || frameworks.includes('react')) {
+        firstSteps.push('開発サーバー起動: npm run dev');
+        firstSteps.push('ブラウザで http://localhost:3000 を開いて動作確認');
+      } else if (frameworks.includes('cli')) {
+        firstSteps.push('コマンドラインヘルプを確認: --help オプション');
+        firstSteps.push('簡単なコマンドで基本動作をテスト');
       } else {
-        basicUsage.push('メイン機能の実行');
+        firstSteps.push('設定ファイル（config/env）の確認と必要に応じた調整');
+        firstSteps.push('サンプルコードやドキュメントで使用法を確認');
       }
     }
+    
+    // Enhanced basic usage extraction
+    if (readmeAnalysis.examples && readmeAnalysis.examples.length > 0) {
+      const example = readmeAnalysis.examples[0];
+      basicUsage.push(`基本例: ${example.title || 'メイン機能'}`);
+      
+      if (example.code && example.code.length > 10) {
+        const codePreview = example.code.split('\n')[0].substring(0, 50);
+        basicUsage.push(`コード例: ${codePreview}...`);
+      }
+      
+      if (example.description) {
+        basicUsage.push(`期待結果: ${example.description.substring(0, 80)}`);
+      }
+    } else {
+      // Tech stack based usage inference
+      const frameworks = techStack.map(t => t.name.toLowerCase());
+      
+      if (frameworks.includes('api') || frameworks.includes('express')) {
+        basicUsage.push('HTTPリクエストでAPIエンドポイントを呼び出し');
+        basicUsage.push('JSONレスポンスでデータを取得・操作');
+      } else if (frameworks.includes('cli')) {
+        basicUsage.push('コマンドラインで必要なオプションを指定して実行');
+        basicUsage.push('標準出力やファイルで結果を確認');
+      } else if (frameworks.includes('library') || frameworks.includes('package')) {
+        basicUsage.push('import/requireでライブラリを読み込み');
+        basicUsage.push('提供されるAPIメソッドを呼び出し');
+      } else if (frameworks.includes('web') || frameworks.includes('react')) {
+        basicUsage.push('ブラウザでアプリケーションを開いて操作');
+        basicUsage.push('UIコンポーネントとユーザーインタラクションを確認');
+      } else {
+        basicUsage.push('メイン機能を実行して基本動作を確認');
+        basicUsage.push('ログや出力で期待される結果を検証');
+      }
+    }
+    
+    console.log('🚀 Quick start extracted:', {
+      installation: installation.length,
+      firstSteps: firstSteps.length,
+      basicUsage: basicUsage.length
+    });
 
     return { installation, firstSteps, basicUsage };
+  }
+
+  /**
+   * アクション可能なステップかどうかを判定
+   */
+  private isActionableStep(sentence: string): boolean {
+    const actionWords = [
+      'run', 'execute', 'install', 'start', 'open', 'create', 'build',
+      'configure', 'set', 'add', 'use', 'call', 'import', 'export'
+    ];
+    
+    const lowerSentence = sentence.toLowerCase();
+    return actionWords.some(word => lowerSentence.includes(word)) &&
+           !lowerSentence.includes('example') &&
+           !lowerSentence.includes('note:');
   }
 
   private generatePracticalExamples(repository: any, readmeAnalysis: any, techStack: any[]): any[] {
     const examples: any[] = [];
     
-    // README examples から実用例を生成
+    console.log('📚 Generating practical examples:', {
+      readmeExamples: readmeAnalysis.examples?.length || 0,
+      useCases: readmeAnalysis.useCases?.length || 0,
+      repoName: repository.name
+    });
+    
+    // Enhanced README examples processing
     if (readmeAnalysis.examples && readmeAnalysis.examples.length > 0) {
-      readmeAnalysis.examples.slice(0, 3).forEach((example: any) => {
+      readmeAnalysis.examples.slice(0, 3).forEach((example: any, index: number) => {
+        const scenario = example.title || `使用例${index + 1}: ${repository.name}の実用機能`;
+        
+        // Extract meaningful steps from code and description
+        const steps = this.extractStepsFromExample(example, techStack);
+        const expectedOutput = this.inferExpectedOutput(example, techStack);
+        
         examples.push({
-          scenario: example.title || '基本的な使用例',
-          steps: [
-            'コードを実行環境にコピー',
-            '必要な設定やパラメータを調整',
-            '実行して結果を確認'
-          ],
-          expectedOutput: example.description || '期待される結果の出力'
+          scenario,
+          steps,
+          expectedOutput
         });
       });
     }
     
-    // Tech stack から推論した実用例
+    // Generate examples from use cases
+    if (readmeAnalysis.useCases && readmeAnalysis.useCases.length > 0 && examples.length < 2) {
+      readmeAnalysis.useCases.slice(0, 2).forEach((useCase: string) => {
+        examples.push({
+          scenario: `実用例: ${useCase}`,
+          steps: this.generateStepsForUseCase(useCase, techStack),
+          expectedOutput: `${useCase}の実現と期待される結果`
+        });
+      });
+    }
+    
+    // Smart tech stack-based examples with more specificity
     if (examples.length === 0) {
       const frameworks = techStack.map(t => t.name.toLowerCase());
+      const repoName = repository.name.toLowerCase();
       
-      if (frameworks.includes('api') || frameworks.includes('express')) {
+      if (frameworks.includes('api') || frameworks.includes('express') || frameworks.includes('fastapi')) {
         examples.push({
-          scenario: 'API エンドポイントの使用',
+          scenario: `${repository.name} APIエンドポイントの使用`,
           steps: [
-            'サーバーを起動',
-            'HTTP クライアントでエンドポイントにリクエスト送信',
-            'レスポンスの確認と処理'
+            'サーバー起動: npm start または python app.py',
+            'APIドキュメントでエンドポイントを確認',
+            'curlやPostmanでHTTPリクエスト送信',
+            'レスポンスデータを解析・活用'
           ],
-          expectedOutput: 'JSON形式のレスポンスとHTTPステータスコード'
+          expectedOutput: 'JSON形式のデータレスポンスと適切なHTTPステータスコード'
         });
-      } else if (frameworks.includes('cli')) {
+      } else if (frameworks.includes('cli') || repoName.includes('cli') || repoName.includes('tool')) {
         examples.push({
-          scenario: 'コマンドライン実行',
+          scenario: `${repository.name}コマンドラインツールの実行`,
           steps: [
-            'コマンドライン引数を準備',
-            'プログラムを実行',
-            '結果の確認とログ出力の確認'
+            'ヘルプ情報を確認: ${repository.name} --help',
+            '必要なパラメータやオプションを準備',
+            'コマンドを実行して処理開始',
+            '出力結果やログを確認・検証'
           ],
-          expectedOutput: 'コンソール出力と処理結果'
+          expectedOutput: 'コンソール出力、生成ファイル、または数値的な処理結果'
+        });
+      } else if (frameworks.includes('react') || frameworks.includes('vue') || frameworks.includes('web')) {
+        examples.push({
+          scenario: `${repository.name}Webアプリケーションの起動と操作`,
+          steps: [
+            '開発サーバー起動: npm run dev または yarn dev',
+            'ブラウザで http://localhost:3000 を開く',
+            'UIコンポーネントや機能をテスト',
+            'ユーザーインタラクションやデータフローを確認'
+          ],
+          expectedOutput: 'インタラクティブなWebアプリケーションの動作と期待通りのUI/UX'
+        });
+      } else if (frameworks.includes('library') || frameworks.includes('package')) {
+        examples.push({
+          scenario: `${repository.name}ライブラリのプログラムへの組み込み`,
+          steps: [
+            'import文でライブラリを読み込み',
+            '提供されるAPIメソッドやクラスを初期化',
+            '主要機能を呼び出して処理実行',
+            '戻り値や結果をアプリケーションで活用'
+          ],
+          expectedOutput: 'ライブラリが提供する機能を活用したアプリケーションの実現'
         });
       } else {
         examples.push({
-          scenario: '基本的な機能の使用',
+          scenario: `${repository.name}メイン機能の実用的利用`,
           steps: [
-            'プログラムのセットアップ',
-            '主要機能の実行',
-            '結果の確認'
+            'プロジェクトのセットアップと環境構築',
+            '設定ファイルの調整とカスタマイズ',
+            '核心機能を実行して基本動作を確認',
+            '結果やログを検証して期待値と比較'
           ],
-          expectedOutput: '想定された処理結果'
+          expectedOutput: 'プロジェクトの主目的に沿った成果物や処理結果'
         });
       }
     }
-
+    
+    console.log('📚 Generated', examples.length, 'practical examples');
     return examples;
+  }
+
+  /**
+   * コード例からステップを抽出
+   */
+  private extractStepsFromExample(example: any, techStack: any[]): string[] {
+    const steps: string[] = [];
+    
+    if (example.code) {
+      const codeLines = example.code.split('\n').filter((line: string) => line.trim().length > 0);
+      
+      // Identify key operations from code
+      const frameworks = techStack.map(t => t.name.toLowerCase());
+      
+      if (frameworks.includes('api')) {
+        steps.push('APIエンドポイントへのリクエスト送信');
+      }
+      if (codeLines.some((line: string) => line.includes('import') || line.includes('require'))) {
+        steps.push('必要なライブラリやモジュールのインポート');
+      }
+      if (codeLines.length > 3) {
+        steps.push('コード例を実行環境にコピーして実行');
+      }
+    }
+    
+    if (example.description) {
+      steps.push(`結果の確認: ${example.description.substring(0, 50)}`);
+    }
+    
+    if (steps.length === 0) {
+      steps.push('サンプルコードを実行環境でテスト');
+      steps.push('期待される動作や出力を確認');
+    }
+    
+    return steps;
+  }
+
+  /**
+   * 例から期待結果を推論
+   */
+  private inferExpectedOutput(example: any, techStack: any[]): string {
+    if (example.description && example.description.length > 10) {
+      return example.description;
+    }
+    
+    const frameworks = techStack.map(t => t.name.toLowerCase());
+    
+    if (frameworks.includes('api')) {
+      return 'JSONレスポンスデータとHTTPステータスコード';
+    } else if (frameworks.includes('cli')) {
+      return 'コンソール出力と処理結果';
+    } else if (frameworks.includes('web')) {
+      return 'Webブラウザでの視覚的な結果やユーザーインタラクション';
+    }
+    
+    return '期待される機能の動作と結果';
+  }
+
+  /**
+   * 使用例からステップを生成
+   */
+  private generateStepsForUseCase(useCase: string, techStack: any[]): string[] {
+    const steps: string[] = [];
+    const lowerUseCase = useCase.toLowerCase();
+    const frameworks = techStack.map(t => t.name.toLowerCase());
+    
+    if (lowerUseCase.includes('api') || lowerUseCase.includes('service')) {
+      steps.push('APIサービスの起動と初期設定');
+      steps.push('エンドポイントへのリクエスト送信');
+    } else if (lowerUseCase.includes('data') || lowerUseCase.includes('process')) {
+      steps.push('データの準備と前処理');
+      steps.push('処理ロジックの実行');
+    } else {
+      steps.push(`${useCase}のための環境設定`);
+      steps.push('機能の実行と結果確認');
+    }
+    
+    return steps;
   }
 
   private identifyPrerequisites(readmeAnalysis: any, techStack: any[], structure: any): any {
@@ -586,54 +804,121 @@ export class PracticalRepositorySummarizer {
     const knowledgeRequirements: string[] = [];
     const dependencies: string[] = [];
     
-    // README から前提条件を抽出
-    if (readmeAnalysis.installation && readmeAnalysis.installation.prerequisites) {
-      systemRequirements.push(...readmeAnalysis.installation.prerequisites);
+    console.log('📝 Identifying prerequisites:', {
+      hasInstallationPrereqs: !!readmeAnalysis.installation?.prerequisites,
+      techStackSize: techStack.length,
+      packageManager: structure.packageManager
+    });
+    
+    // Enhanced README prerequisites extraction
+    if (readmeAnalysis.installation) {
+      if (readmeAnalysis.installation.prerequisites) {
+        systemRequirements.push(...readmeAnalysis.installation.prerequisites);
+      }
+      
+      // Extract version requirements from installation commands
+      Object.values(readmeAnalysis.installation).forEach((cmd: any) => {
+        if (typeof cmd === 'string') {
+          const versionMatch = cmd.match(/node\s+([\d.]+)|python\s+([\d.]+)|go\s+([\d.]+)/);
+          if (versionMatch) {
+            systemRequirements.push(`バージョン要件: ${cmd}`);
+          }
+        }
+      });
     }
     
-    // Tech stack から要件を推論
+    // Enhanced tech stack-based requirements inference
     const frameworks = techStack.map(t => t.name.toLowerCase());
+    const categories = techStack.map(t => t.category.toLowerCase());
     
-    // System requirements
-    if (frameworks.includes('node') || frameworks.includes('npm')) {
-      systemRequirements.push('Node.js (推奨: LTS版)');
+    // System requirements (more comprehensive)
+    if (frameworks.includes('node') || frameworks.includes('npm') || structure.packageManager === 'npm') {
+      systemRequirements.push('Node.js v16+ (推奨: LTS最新版) + npm');
     }
-    if (frameworks.includes('python')) {
-      systemRequirements.push('Python 3.7+ または対応バージョン');
+    if (frameworks.includes('yarn')) {
+      systemRequirements.push('Yarn package manager');
     }
-    if (frameworks.includes('go')) {
-      systemRequirements.push('Go 1.16+ または対応バージョン');
+    if (frameworks.includes('python') || categories.includes('python')) {
+      systemRequirements.push('Python 3.8+ (推奨: 3.10+) + pip');
     }
-    if (frameworks.includes('rust')) {
-      systemRequirements.push('Rust toolchain');
+    if (frameworks.includes('go') || categories.includes('go')) {
+      systemRequirements.push('Go 1.18+ (推奨: 最新安定版)');
     }
-    if (frameworks.includes('docker')) {
-      systemRequirements.push('Docker Engine');
+    if (frameworks.includes('rust') || frameworks.includes('cargo')) {
+      systemRequirements.push('Rust toolchain (rustc + cargo)');
+    }
+    if (frameworks.includes('docker') || frameworks.includes('kubernetes')) {
+      systemRequirements.push('Docker Engine + Docker Compose');
+      if (frameworks.includes('kubernetes')) {
+        systemRequirements.push('kubectl + ローカルまたはリモートKubernetesクラスタ');
+      }
+    }
+    if (frameworks.includes('database') || frameworks.includes('mysql') || frameworks.includes('postgres')) {
+      systemRequirements.push('データベースサーバー (ローカルまたはリモート)');
+    }
+    if (frameworks.includes('redis')) {
+      systemRequirements.push('Redis server (キャッシュ・セッション管理)');
     }
     
-    // Knowledge requirements
+    // Knowledge requirements (more detailed)
     if (frameworks.includes('typescript')) {
-      knowledgeRequirements.push('TypeScript の基本的な理解');
+      knowledgeRequirements.push('TypeScript: 型システム、インターフェース、ジェネリックスの理解');
     }
     if (frameworks.includes('react')) {
-      knowledgeRequirements.push('React components とライフサイクルの理解');
+      knowledgeRequirements.push('React: コンポーネント、Hooks、状態管理の理解');
+    }
+    if (frameworks.includes('vue')) {
+      knowledgeRequirements.push('Vue.js: コンポーネント、ディレクティブ、状態管理の理解');
     }
     if (frameworks.includes('api') || frameworks.includes('rest')) {
-      knowledgeRequirements.push('REST API の基本概念');
+      knowledgeRequirements.push('REST API: HTTPメソッド、ステータスコード、JSONの理解');
+    }
+    if (frameworks.includes('graphql')) {
+      knowledgeRequirements.push('GraphQL: クエリ、ミューテーション、スキーマの理解');
     }
     if (frameworks.includes('cli')) {
-      knowledgeRequirements.push('コマンドライン操作の基本');
+      knowledgeRequirements.push('コマンドライン: 基本操作、パイプ、リダイレクトの理解');
+    }
+    if (frameworks.includes('docker')) {
+      knowledgeRequirements.push('Docker: コンテナ、イメージ、ボリュームの基本概念');
+    }
+    if (frameworks.includes('git')) {
+      knowledgeRequirements.push('Git: バージョン管理、ブランチ操作の基本');
     }
     
-    // Basic dependencies
+    // Enhanced dependencies identification
     if (structure.packageManager) {
-      dependencies.push(`パッケージマネージャー (${structure.packageManager})`);
+      dependencies.push(`パッケージマネージャー: ${structure.packageManager}`);
     }
+    if (structure.hasTests) {
+      dependencies.push('テストフレームワーク (プロジェクトで使用されているもの)');
+    }
+    if (structure.hasLinting) {
+      dependencies.push('コード品質ツール (ESLint, Prettier等)');
+    }
+    if (structure.hasCI) {
+      dependencies.push('CI/CD環境 (ローカル開発時は不要)');
+    }
+    
+    // Add environment-specific requirements
+    const envRequirements: string[] = [];
+    if (frameworks.includes('web') || frameworks.includes('frontend')) {
+      envRequirements.push('モダンブラウザ (Chrome, Firefox, Safari最新版)');
+    }
+    if (frameworks.includes('mobile')) {
+      envRequirements.push('モバイル開発環境 (Android Studio, Xcode等)');
+    }
+    
+    console.log('📝 Prerequisites identified:', {
+      systemRequirements: systemRequirements.length,
+      knowledgeRequirements: knowledgeRequirements.length,
+      dependencies: dependencies.length
+    });
     
     return {
-      systemRequirements: systemRequirements.length > 0 ? systemRequirements : ['標準的な開発環境'],
-      knowledgeRequirements: knowledgeRequirements.length > 0 ? knowledgeRequirements : ['基本的なプログラミング知識'],
-      dependencies: dependencies.length > 0 ? dependencies : ['プロジェクト固有の依存関係']
+      systemRequirements: systemRequirements.length > 0 ? systemRequirements : ['標準的な開発環境 (現代的OS + エディタ/IDE)'],
+      knowledgeRequirements: knowledgeRequirements.length > 0 ? knowledgeRequirements : ['基本的なプログラミング知識とコマンドライン操作'],
+      dependencies: dependencies.length > 0 ? dependencies : ['プロジェクト固有の依存関係 (package.jsonやrequirements.txtで管理)']
     };
   }
 
@@ -1232,32 +1517,61 @@ export class PracticalRepositorySummarizer {
     codebaseStructure: CodebaseStructureAnalysis,
     understandingGuidance: UnderstandingGuidanceAnalysis
   ): string {
+    console.log('📝 Synthesizing practical summary with:', {
+      purpose: whatAndHow.purpose?.substring(0, 50),
+      coreFunction: whatAndHow.coreFunction?.substring(0, 50),
+      implementationStrategy: technicalApproach.implementationStrategy?.substring(0, 50),
+      quickStartSteps: whatAndHow.quickStart?.installation?.length || 0,
+      practicalExamples: whatAndHow.practicalExamples?.length || 0
+    });
+    
+    // More detailed and informative summary
+    const mainTech = technicalApproach.coreTechnologies?.slice(0, 3).map(t => t.name).join(', ') || '技術スタック';
+    const installSteps = whatAndHow.quickStart?.installation?.join(' → ') || 'セットアップ手順をREADMEで確認';
+    const firstStep = whatAndHow.quickStart?.firstSteps?.[0] || '環境設定から開始';
+    const organizationPattern = codebaseStructure.codeOrganization?.pattern || '標準的なプロジェクト構造';
+    const keyFiles = codebaseStructure.entryPoints?.slice(0, 2).map(e => e.file).join(', ') || 'メインファイルを検索';
+    const readingOrder = understandingGuidance.codeReadingGuidance?.readingOrder?.slice(0, 2).join(' → ') || 'READMEから開始';
+    const practicalScenario = whatAndHow.practicalExamples?.[0]?.scenario || '日常的な開発作業';
+    
     return `## 🔧 エンジニア向け実用要約
 
-### このリポジトリの本質
+### 🎯 このリポジトリの本質
 ${whatAndHow.purpose}
 
 **コア機能**: ${whatAndHow.coreFunction}
 
-### 実装アプローチ
+### 🛠️ 実装アプローチ
 ${technicalApproach.implementationStrategy}
 
-**主要技術**: ${technicalApproach.coreTechnologies.slice(0, 3).map(t => t.name).join(', ')}
+**主要技術**: ${mainTech}
 
-### 使い始めるには
-**セットアップ**: ${whatAndHow.quickStart.installation.join(' → ')}
-**最初のステップ**: ${whatAndHow.quickStart.firstSteps[0] || '基本設定から開始'}
+### 🚀 使い始めるには
+**セットアップ**: \`${installSteps}\`
+**最初のステップ**: ${firstStep}
 
-### コードベース構造
-**組織化パターン**: ${codebaseStructure.codeOrganization.pattern}
-**重要なエントリーポイント**: ${codebaseStructure.entryPoints.slice(0, 2).map(e => e.file).join(', ')}
+### 📁 コードベース構造
+**組織化パターン**: ${organizationPattern}
+**重要なエントリーポイント**: \`${keyFiles}\`
 
-### 理解のポイント
-**学習順序**: ${understandingGuidance.codeReadingGuidance.readingOrder.slice(0, 2).join(' → ')}
-**キーファイル**: ${understandingGuidance.codeReadingGuidance.keyFilesToUnderstand.slice(0, 2).join(', ')}
+### 📚 理解のポイント
+**推奨学習順序**: ${readingOrder}
+**キーファイル**: \`${understandingGuidance.codeReadingGuidance?.keyFilesToUnderstand?.slice(0, 2).join(', ') || '要検索'}\`
 
-### 実用的価値
-このリポジトリは、${whatAndHow.practicalExamples[0]?.scenario || '特定の技術的課題'}の解決に実用的なアプローチを提供し、${technicalApproach.implementationStrategy}による実装を通じて、エンジニアの実際の開発作業に直接活用できる具体的な解決策を提供します。`;
+### 🎆 実用的価値
+このリポジトリは **${practicalScenario}** において、${technicalApproach.implementationStrategy}を通じて、エンジニアの実際の開発作業を効率化し、生産性を向上させる具体的な解決策を提供します。
+
+${
+  whatAndHow.practicalExamples && whatAndHow.practicalExamples.length > 0 
+    ? `**主な活用シーン**: ${whatAndHow.practicalExamples.slice(0, 2).map(ex => ex.scenario).join('、')}`
+    : ''
+}
+
+${
+  technicalApproach.designDecisions && technicalApproach.designDecisions.length > 0
+    ? `**設計の特徴**: ${technicalApproach.designDecisions[0]?.decision}など、実用性を重視した設計判断`
+    : ''
+}`;
   }
 }
 
