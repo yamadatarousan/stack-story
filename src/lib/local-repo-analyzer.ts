@@ -317,6 +317,24 @@ export class LocalRepoAnalyzer {
       progress: 75,
     });
 
+    // README content extraction for practical summarizer
+    let readmeContent = null;
+    const readmeFile = Object.entries(files).find(([filePath, content]) => 
+      filePath.toLowerCase().includes('readme') || 
+      path.basename(filePath).toLowerCase().startsWith('readme')
+    );
+    if (readmeFile) {
+      readmeContent = readmeFile[1]; // The content is the second element of the tuple
+      console.log(`📄 Found README: ${readmeFile[0]} (${readmeContent.length} characters)`);
+      
+      // Update repository description with meaningful content from README
+      const meaningfulDescription = this.extractMeaningfulDescription(readmeContent);
+      if (meaningfulDescription) {
+        repository.description = meaningfulDescription;
+        console.log(`📝 Updated repository description: ${meaningfulDescription.substring(0, 100)}...`);
+      }
+    }
+
     // Narrative report generation
     this.reportProgress({
       stage: 'analyzing',
@@ -367,6 +385,7 @@ export class LocalRepoAnalyzer {
       summary: this.generateSummary(deepAnalysis),
       deepAnalysis,
       narrativeReport,
+      zipReadmeContent: readmeContent, // Add README content for practical summarizer
     };
 
     this.reportProgress({
@@ -513,6 +532,62 @@ export class LocalRepoAnalyzer {
       this.progressCallback(progress);
     }
     console.log(`[${progress.stage}] ${progress.message} (${progress.progress}%)`);
+  }
+
+  /**
+   * README内容から意味のある説明を抽出
+   */
+  private extractMeaningfulDescription(readmeContent: string): string | null {
+    if (!readmeContent || readmeContent.length < 20) {
+      return null;
+    }
+
+    // Markdownヘッダーを除去
+    const cleanedContent = readmeContent.replace(/^#{1,6}\s+/gm, '').trim();
+    
+    // 行に分割して処理
+    const lines = cleanedContent.split('\n');
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // 有効な説明行かチェック
+      if (trimmedLine.length > 30 && this.isValidDescriptionLine(trimmedLine)) {
+        // 150文字以内に制限
+        return trimmedLine.length > 150 
+          ? trimmedLine.substring(0, 147) + '...'
+          : trimmedLine;
+      }
+    }
+    
+    return null;
+  }
+
+  /**
+   * 有効な説明行かどうかを判定
+   */
+  private isValidDescriptionLine(line: string): boolean {
+    // 除外すべきパターン
+    const excludePatterns = [
+      /^\[.*\]\(.*\)/, // リンクのみ
+      /^!\[.*\]/, // 画像のみ
+      /^```/, // コードブロック
+      /^\s*[-*+]\s/, // リスト項目
+      /^\s*\d+\.\s/, // 番号付きリスト
+      /^\s*\|/, // テーブル
+      /^https?:\/\//, // URL
+      /^#{1,6}\s/, // ヘッダー
+    ];
+    
+    for (const pattern of excludePatterns) {
+      if (pattern.test(line)) {
+        return false;
+      }
+    }
+    
+    // 最低4単語以上
+    const wordCount = line.split(/\s+/).length;
+    return wordCount >= 4;
   }
 }
 

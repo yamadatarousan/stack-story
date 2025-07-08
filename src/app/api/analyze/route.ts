@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { parseGitHubUrl, getRepository, getConfigFiles, getFileStructure, getSourceFiles, getRateLimit } from '@/lib/github';
-import { performFullAnalysis } from '@/lib/analyzer';
-import { IntelligentAnalyzer } from '@/lib/intelligent-analyzer';
-import { DeepCodeAnalyzer } from '@/lib/deep-code-analyzer';
+import { parseGitHubUrl } from '@/lib/github';
+import { zipBasedAnalyzer } from '@/lib/zip-based-analyzer';
+import { practicalRepositorySummarizer } from '@/lib/practical-repository-summarizer';
 import { AnalysisError } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -27,118 +26,102 @@ export async function POST(request: NextRequest) {
 
     const { owner, repo } = parsed;
 
-    // 0. レート制限をチェック
-    console.log('Checking GitHub API rate limit...');
-    const rateLimit = await getRateLimit();
-    if (rateLimit && rateLimit.rate.remaining < 10) {
-      return NextResponse.json(
-        { 
-          error: {
-            message: 'GitHub API rate limit exceeded. Please try again later.',
-            details: `Remaining: ${rateLimit.rate.remaining}, Reset: ${new Date(rateLimit.rate.reset * 1000)}`
-          }
-        },
-        { status: 429 }
-      );
-    }
-    console.log('Rate limit OK, remaining:', rateLimit?.rate.remaining || 'unknown');
+    console.log(`🚀 Starting ZIP-based analysis for ${owner}/${repo} (bypassing GitHub API limits)`);
+    const startTime = Date.now();
 
-    // 1. リポジトリ情報を取得
-    let repository;
+    // ZIP-based analysis (完全にGitHub API制限を回避)
+    let zipAnalysis;
     try {
-      repository = await getRepository(owner, repo);
+      zipAnalysis = await zipBasedAnalyzer.analyzeRepository(owner, repo);
     } catch (error) {
       const analysisError: AnalysisError = {
-        message: 'Failed to fetch repository information',
-        status: 404,
-        phase: 'github-fetch',
-        repository: `${owner}/${repo}`,
-        details: error,
-      };
-      return NextResponse.json({ error: analysisError }, { status: 404 });
-    }
-
-    // 2. 設定ファイルを取得
-    let configFiles;
-    try {
-      configFiles = await getConfigFiles(owner, repo);
-    } catch (error) {
-      const analysisError: AnalysisError = {
-        message: 'Failed to fetch configuration files',
+        message: 'Failed to perform ZIP-based analysis',
         status: 500,
-        phase: 'file-analysis',
+        phase: 'zip-upload',
         repository: `${owner}/${repo}`,
         details: error,
       };
       return NextResponse.json({ error: analysisError }, { status: 500 });
     }
 
-    // 3. ファイル構造を取得
-    let fileStructure;
+    const zipTime = Date.now() - startTime;
+    console.log(`✅ ZIP analysis complete in ${zipTime}ms`);
+
+    // Convert to standard AnalysisResult format
+    const analysisResult = {
+      repository: zipAnalysis.repository,
+      techStack: zipAnalysis.techStack,
+      dependencies: zipAnalysis.dependencies,
+      structure: zipAnalysis.structure,
+      summary: zipAnalysis.summary,
+      detectedFiles: zipAnalysis.detectedFiles.map(fileName => ({
+        name: fileName.split('/').pop() || fileName,
+        path: fileName,
+        type: 'source' as const,
+        size: 0,
+        importance: 5
+      })),
+      zipReadmeContent: zipAnalysis.readmeContent
+    };
+
+    // Generate enhanced practical summary
+    let practicalSummary;
     try {
-      fileStructure = await getFileStructure(owner, repo, '', 2);
+      practicalSummary = await practicalRepositorySummarizer.generatePracticalSummary(analysisResult);
     } catch (error) {
-      const analysisError: AnalysisError = {
-        message: 'Failed to fetch file structure',
-        status: 500,
-        phase: 'file-analysis',
-        repository: `${owner}/${repo}`,
-        details: error,
-      };
-      return NextResponse.json({ error: analysisError }, { status: 500 });
+      console.warn('⚠️ Practical summary generation failed, using basic analysis:', error);
+      practicalSummary = null;
     }
 
-    // 4. ソースコードを取得
-    let sourceFiles: Record<string, string | null> = {};
-    try {
-      sourceFiles = await getSourceFiles(owner, repo);
-      console.log(`Fetched ${Object.keys(sourceFiles).length} source files`);
-    } catch (error) {
-      console.error('Failed to fetch source files:', error);
-      // ソースコード取得エラーは無視して継続
-    }
+    const totalTime = Date.now() - startTime;
 
-    // 5. ディープ分析を実行
-    let analysis;
-    try {
-      // ソースコードが取得できた場合はディープ分析
-      if (Object.keys(sourceFiles).length > 0) {
-        const deepAnalyzer = new DeepCodeAnalyzer(repository, { ...configFiles, ...sourceFiles });
-        const deepAnalysis = await deepAnalyzer.performDeepAnalysis();
-        
-        // 基本分析結果も取得
-        const basicAnalysis = await performFullAnalysis(repository, configFiles, fileStructure);
-        
-        analysis = {
-          ...basicAnalysis,
-          ...deepAnalysis,
-          // ディープ分析結果を追加
-          deepAnalysis: deepAnalysis,
-        };
-      } else {
-        // フォールバック: インテリジェント分析
-        const intelligentAnalyzer = new IntelligentAnalyzer(repository, configFiles, fileStructure);
-        analysis = await intelligentAnalyzer.performIntelligentAnalysis();
-        
-        // 基本分析で補完
-        if (!analysis.techStack.length) {
-          const fallbackAnalysis = await performFullAnalysis(repository, configFiles, fileStructure);
-          analysis.techStack = fallbackAnalysis.techStack;
-          analysis.dependencies = fallbackAnalysis.dependencies;
-        }
+    // Create frontend-compatible projectOverview from practical summary
+    const projectOverview = practicalSummary ? {
+      purpose: practicalSummary.whatAndHow.purpose || analysisResult.repository.description || `${analysisResult.repository.name} project`,
+      mainTechnology: practicalSummary.technicalApproach.mainTechnology || zipAnalysis.techStack[0]?.name || 'Unknown technology',
+      category: practicalSummary.whatAndHow.category || 'Software Tool',
+      businessDomain: practicalSummary.technicalApproach.domainFocus || 'Development',
+      targetAudience: practicalSummary.understandingGuidance?.targetAudience?.[0] || 'Developers',
+      architecturalPattern: practicalSummary.technicalApproach.architecturalChoices?.[0] || 'Standard architecture',
+      problemSolved: practicalSummary.whatAndHow.coreFunction?.substring(0, 200) || 'Software functionality',
+      keyFeatures: practicalSummary.whatAndHow.practicalExamples?.map(ex => ex.scenario) || ['Core functionality'],
+      useCases: practicalSummary.whatAndHow.practicalExamples?.map(ex => ex.implementation) || ['General use case'],
+      innovationLevel: 'Intermediate',
+      marketPosition: 'Open Source Tool'
+    } : {
+      purpose: analysisResult.repository.description || `${analysisResult.repository.name} project`,
+      mainTechnology: zipAnalysis.techStack[0]?.name || 'Unknown technology',
+      category: 'Software Tool',
+      businessDomain: 'Development',
+      targetAudience: 'Developers',
+      architecturalPattern: 'Standard architecture',
+      problemSolved: zipAnalysis.summary || 'Software functionality',
+      keyFeatures: ['Core functionality'],
+      useCases: ['General use case'],
+      innovationLevel: 'Intermediate',
+      marketPosition: 'Open Source Tool'
+    };
+
+    // Enhanced analysis result with ZIP-based improvements
+    const analysis = {
+      ...analysisResult,
+      // Add practical summary if available
+      practicalSummary,
+      // Add frontend-compatible projectOverview
+      projectOverview,
+      // Enhanced metadata
+      analysisMetadata: {
+        method: 'ZIP-based',
+        zipAnalysisTime: zipTime,
+        totalAnalysisTime: totalTime,
+        filesAnalyzed: zipAnalysis.detectedFiles.length,
+        apiIndependent: true,
+        readmeAnalyzed: !!zipAnalysis.readmeContent,
+        qualityImprovement: zipAnalysis.techStack.length > 0 ? 'HIGH' : 'MEDIUM'
       }
-    } catch (error) {
-      const analysisError: AnalysisError = {
-        message: 'Failed to perform analysis',
-        status: 500,
-        phase: 'dependency-resolution',
-        repository: `${owner}/${repo}`,
-        details: error,
-      };
-      return NextResponse.json({ error: analysisError }, { status: 500 });
-    }
+    };
 
-    // 5. データベースに保存（オプション）
+    // データベースに保存（オプション）
     let savedData;
     try {
       // データベースが利用可能な場合のみ保存を試行
@@ -151,6 +134,9 @@ export async function POST(request: NextRequest) {
       // データベース保存に失敗してもレスポンスは返す
     }
 
+    console.log(`🎯 ZIP-based analysis completed successfully for ${owner}/${repo}`);
+    console.log(`📊 Results: ${zipAnalysis.techStack.length} technologies, ${zipAnalysis.dependencies.length} dependencies, ${zipAnalysis.detectedFiles.length} files`);
+
     return NextResponse.json({
       success: true,
       data: analysis,
@@ -158,9 +144,16 @@ export async function POST(request: NextRequest) {
         analyzedAt: new Date().toISOString(),
         owner,
         repo,
-        analysisVersion: '1.0.0',
+        analysisVersion: '2.0.0-zip',
+        method: 'ZIP-based',
+        apiIndependent: true,
         saved: !!savedData,
         analysisId: savedData?.analysis?.id,
+        performance: {
+          zipAnalysisTime: zipTime,
+          totalTime,
+          filesAnalyzed: zipAnalysis.detectedFiles.length
+        }
       },
     });
 

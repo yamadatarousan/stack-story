@@ -58,6 +58,7 @@ export default function IntelligentAnalysisResults({ result }: IntelligentAnalys
     maturityLevel 
   } = result;
 
+
   const getQualityColor = (level: string) => {
     switch (level) {
       case 'high':

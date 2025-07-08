@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LocalRepoAnalyzer, isValidGitUrl, sanitizeProjectName } from '@/lib/local-repo-analyzer';
 import { EnhancedLocalAnalyzer } from '@/lib/enhanced-local-analyzer';
+import { zipBasedAnalyzer } from '@/lib/zip-based-analyzer';
+import { practicalRepositorySummarizer } from '@/lib/practical-repository-summarizer';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,7 +10,7 @@ export async function POST(request: NextRequest) {
     const analysisType = formData.get('type') as string;
 
     if (analysisType === 'git') {
-      // Git URLからの分析
+      // Git URLからの分析 - ZIP-based approach
       const gitUrl = formData.get('gitUrl') as string;
       
       if (!gitUrl) {
@@ -25,48 +27,117 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const analyzer = new LocalRepoAnalyzer();
-      const basicAnalysis = await analyzer.analyzeFromGitUrl(gitUrl);
-      
-      // Enhanced analysis with deep content analysis
-      // Extract repository path from git URL or use temp directory
-      const repoName = gitUrl.split('/').pop()?.replace('.git', '') || 'repository';
-      const repositoryPath = `/tmp/${repoName}`; // Simplified path - in real implementation would track actual clone path
-      
+      // Extract owner and repo from Git URL
+      const urlMatch = gitUrl.match(/github\.com[\/:]([^\/]+)\/([^\/\.]+)/);
+      if (!urlMatch) {
+        return NextResponse.json(
+          { error: 'Could not parse GitHub URL. Please use a valid GitHub repository URL.' },
+          { status: 400 }
+        );
+      }
+
+      const [, owner, repo] = urlMatch;
+
+      console.log(`🚀 Starting ZIP-based local analysis for ${owner}/${repo}`);
+      const startTime = Date.now();
+
       try {
-        const enhancedAnalyzer = new EnhancedLocalAnalyzer();
-        const enhancedAnalysis = await enhancedAnalyzer.analyzeLocalRepository(repositoryPath);
-        
-        const analysis = {
-          ...basicAnalysis,
-          ...enhancedAnalysis,
-          enhancedAnalysis: enhancedAnalysis.enhancedAnalysis,
+        // ZIP-based analysis (same as /api/analyze)
+        const zipAnalysis = await zipBasedAnalyzer.analyzeRepository(owner, repo);
+        const zipTime = Date.now() - startTime;
+
+        // Convert to standard AnalysisResult format
+        const analysisResult = {
+          repository: zipAnalysis.repository,
+          techStack: zipAnalysis.techStack,
+          dependencies: zipAnalysis.dependencies,
+          structure: zipAnalysis.structure,
+          summary: zipAnalysis.summary,
+          detectedFiles: zipAnalysis.detectedFiles.map(fileName => ({
+            name: fileName.split('/').pop() || fileName,
+            path: fileName,
+            type: 'source' as const,
+            size: 0,
+            importance: 5
+          })),
+          zipReadmeContent: zipAnalysis.readmeContent
         };
-        
+
+        // Generate enhanced practical summary
+        let practicalSummary;
+        try {
+          practicalSummary = await practicalRepositorySummarizer.generatePracticalSummary(analysisResult);
+        } catch (error) {
+          console.warn('⚠️ Practical summary generation failed, using basic analysis:', error);
+          practicalSummary = null;
+        }
+
+        const totalTime = Date.now() - startTime;
+
+        // Create frontend-compatible projectOverview from practical summary
+        const projectOverview = practicalSummary ? {
+          purpose: practicalSummary.whatAndHow.purpose || analysisResult.repository.description || `${analysisResult.repository.name} project`,
+          mainTechnology: practicalSummary.technicalApproach.mainTechnology || zipAnalysis.techStack[0]?.name || 'Unknown technology',
+          category: practicalSummary.whatAndHow.category || 'Software Tool',
+          businessDomain: practicalSummary.technicalApproach.domainFocus || 'Development',
+          targetAudience: practicalSummary.understandingGuidance?.targetAudience?.[0] || 'Developers',
+          architecturalPattern: practicalSummary.technicalApproach.architecturalChoices?.[0] || 'Standard architecture',
+          problemSolved: practicalSummary.whatAndHow.coreFunction?.substring(0, 200) || 'Software functionality',
+          keyFeatures: practicalSummary.whatAndHow.practicalExamples?.map(ex => ex.scenario) || ['Core functionality'],
+          useCases: practicalSummary.whatAndHow.practicalExamples?.map(ex => ex.implementation) || ['General use case'],
+          innovationLevel: 'Intermediate',
+          marketPosition: 'Open Source Tool'
+        } : {
+          purpose: analysisResult.repository.description || `${analysisResult.repository.name} project`,
+          mainTechnology: zipAnalysis.techStack[0]?.name || 'Unknown technology',
+          category: 'Software Tool',
+          businessDomain: 'Development',
+          targetAudience: 'Developers',
+          architecturalPattern: 'Standard architecture',
+          problemSolved: zipAnalysis.summary || 'Software functionality',
+          keyFeatures: ['Core functionality'],
+          useCases: ['General use case'],
+          innovationLevel: 'Intermediate',
+          marketPosition: 'Open Source Tool'
+        };
+
+        const analysis = {
+          ...analysisResult,
+          practicalSummary,
+          projectOverview,
+          analysisMetadata: {
+            method: 'ZIP-based-local',
+            zipAnalysisTime: zipTime,
+            totalAnalysisTime: totalTime,
+            filesAnalyzed: zipAnalysis.detectedFiles.length,
+            apiIndependent: true,
+            readmeAnalyzed: !!zipAnalysis.readmeContent,
+            qualityImprovement: zipAnalysis.techStack.length > 0 ? 'HIGH' : 'MEDIUM'
+          }
+        };
+          
         return NextResponse.json({
           success: true,
           analysis,
           metadata: {
             analyzedAt: new Date().toISOString(),
-            method: 'git-clone-enhanced',
+            method: 'ZIP-based-local',
             gitUrl,
-            enhancedAnalysis: true,
-          },
+            apiIndependent: true,
+            performance: {
+              zipAnalysisTime: zipTime,
+              totalTime,
+              filesAnalyzed: zipAnalysis.detectedFiles.length
+            }
+          }
         });
-      } catch (enhancedError) {
-        console.warn('Enhanced analysis failed, falling back to basic:', enhancedError);
+      } catch (zipError) {
+        console.error('ZIP-based analysis failed:', zipError);
         
         return NextResponse.json({
-          success: true,
-          analysis: basicAnalysis,
-          metadata: {
-            analyzedAt: new Date().toISOString(),
-            method: 'git-clone-basic',
-            gitUrl,
-            enhancedAnalysis: false,
-            enhancedError: enhancedError instanceof Error ? enhancedError.message : 'Unknown error',
-          },
-        });
+          error: 'ZIP-based analysis failed',
+          details: zipError instanceof Error ? zipError.message : 'Unknown error'
+        }, { status: 500 });
       }
 
     } else if (analysisType === 'zip') {
@@ -98,22 +169,66 @@ export async function POST(request: NextRequest) {
 
       const zipBuffer = Buffer.from(await zipFile.arrayBuffer());
       const sanitizedName = sanitizeProjectName(projectName);
-      
-      const analyzer = new LocalRepoAnalyzer();
-      const basicAnalysis = await analyzer.analyzeFromZip(zipBuffer, sanitizedName);
-      
-      // Enhanced analysis with deep content analysis
-      // Extract repository path from project name
-      const repositoryPath = `/tmp/${sanitizedName}`; // Simplified path - in real implementation would track actual extract path
-      
+
+      console.log(`🚀 Starting ZIP-based file analysis for ${sanitizedName}`);
+      const startTime = Date.now();
+
       try {
-        const enhancedAnalyzer = new EnhancedLocalAnalyzer();
-        const enhancedAnalysis = await enhancedAnalyzer.analyzeLocalRepository(repositoryPath);
-        
+        // Use the existing LocalRepoAnalyzer (now includes README content extraction)
+        const analyzer = new LocalRepoAnalyzer();
+        const analysisResult = await analyzer.analyzeFromZip(zipBuffer, sanitizedName);
+
+        // Generate enhanced practical summary
+        let practicalSummary;
+        try {
+          practicalSummary = await practicalRepositorySummarizer.generatePracticalSummary(analysisResult);
+        } catch (error) {
+          console.warn('⚠️ Practical summary generation failed, using basic analysis:', error);
+          practicalSummary = null;
+        }
+
+        const totalTime = Date.now() - startTime;
+
+        // Create frontend-compatible projectOverview from practical summary
+        const projectOverview = practicalSummary ? {
+          purpose: practicalSummary.whatAndHow.purpose || analysisResult.repository.description || `${analysisResult.repository.name} project`,
+          mainTechnology: practicalSummary.technicalApproach.mainTechnology || analysisResult.techStack[0]?.name || 'Unknown technology',
+          category: practicalSummary.whatAndHow.category || 'Software Tool',
+          businessDomain: practicalSummary.technicalApproach.domainFocus || 'Development',
+          targetAudience: practicalSummary.understandingGuidance?.targetAudience?.[0] || 'Developers',
+          architecturalPattern: practicalSummary.technicalApproach.architecturalChoices?.[0] || 'Standard architecture',
+          problemSolved: practicalSummary.whatAndHow.coreFunction?.substring(0, 200) || 'Software functionality',
+          keyFeatures: practicalSummary.whatAndHow.practicalExamples?.map(ex => ex.scenario) || ['Core functionality'],
+          useCases: practicalSummary.whatAndHow.practicalExamples?.map(ex => ex.implementation) || ['General use case'],
+          innovationLevel: 'Intermediate',
+          marketPosition: 'Open Source Tool'
+        } : {
+          purpose: analysisResult.repository.description || `${analysisResult.repository.name} project`,
+          mainTechnology: analysisResult.techStack[0]?.name || 'Unknown technology',
+          category: 'Software Tool',
+          businessDomain: 'Development',
+          targetAudience: 'Developers',
+          architecturalPattern: 'Standard architecture',
+          problemSolved: analysisResult.summary || 'Software functionality',
+          keyFeatures: ['Core functionality'],
+          useCases: ['General use case'],
+          innovationLevel: 'Intermediate',
+          marketPosition: 'Open Source Tool'
+        };
+
         const analysis = {
-          ...basicAnalysis,
-          ...enhancedAnalysis,
-          enhancedAnalysis: enhancedAnalysis.enhancedAnalysis,
+          ...analysisResult,
+          practicalSummary,
+          projectOverview,
+          analysisMetadata: {
+            method: 'ZIP-file-enhanced',
+            zipAnalysisTime: totalTime,
+            totalAnalysisTime: totalTime,
+            filesAnalyzed: analysisResult.detectedFiles?.length || 0,
+            apiIndependent: true,
+            readmeAnalyzed: !!(analysisResult as any).zipReadmeContent,
+            qualityImprovement: analysisResult.techStack.length > 0 ? 'HIGH' : 'MEDIUM'
+          }
         };
         
         return NextResponse.json({
@@ -121,10 +236,14 @@ export async function POST(request: NextRequest) {
           analysis,
           metadata: {
             analyzedAt: new Date().toISOString(),
-            method: 'zip-upload-enhanced',
+            method: 'ZIP-file-enhanced',
             projectName: sanitizedName,
             fileSize: zipFile.size,
-            enhancedAnalysis: true,
+            apiIndependent: true,
+            performance: {
+              analysisTime: totalTime,
+              filesAnalyzed: analysisResult.detectedFiles?.length || 0
+            }
           },
         });
       } catch (enhancedError) {

@@ -215,29 +215,52 @@ export class PracticalRepositorySummarizer {
       return mockReadme;
     }
     
+    // Check for ZIP-based README content (priority)
+    const zipReadme = (analysisResult as any).zipReadmeContent;
+    if (zipReadme) {
+      console.log('📦 Using ZIP-based README content for enhanced analysis');
+      const { enhancedReadmeIntelligenceExtractor } = await import('./enhanced-readme-intelligence');
+      return enhancedReadmeIntelligenceExtractor.extractIntelligence(zipReadme);
+    }
+    
+    // Fallback: Try GitHub API (but likely to fail due to rate limits)
     try {
       const repoUrl = analysisResult.repository.html_url;
       const urlParts = repoUrl.replace('https://github.com/', '').split('/');
       
       if (urlParts.length >= 2) {
         const [owner, repo] = urlParts;
+        const { githubContentFetcher } = await import('./github-content-fetcher');
         const content = await githubContentFetcher.fetchRepositoryContent(owner, repo);
         
         if (content.readme) {
+          const { enhancedReadmeAnalyzer } = await import('./enhanced-readme-analyzer');
           return enhancedReadmeAnalyzer.analyzeReadme(content.readme.content);
         }
       }
     } catch (error) {
-      console.warn('Failed to extract README intelligence:', error);
+      console.warn('⚠️ GitHub API failed (likely rate limit), using basic analysis:', error.message);
     }
     
+    // Last resort: Basic analysis from repository metadata
+    console.log('📝 Using basic repository metadata for README analysis');
     return { 
       title: analysisResult.repository.name,
       description: analysisResult.repository.description || '',
+      purpose: `${analysisResult.repository.name} repository`,
+      category: 'Software Tool',
       features: [],
-      installation: {},
-      usage: { basicUsage: '' },
-      examples: []
+      keyBenefits: [],
+      useCases: [],
+      technologies: analysisResult.techStack?.map(t => t.name) || [],
+      requirements: [],
+      installation: { steps: [], commands: [], notes: [] },
+      usage: { basicUsage: '', examples: [], codeSnippets: [] },
+      projectType: 'Software Project',
+      targetAudience: ['developers'],
+      complexity: 'intermediate' as const,
+      analysisQuality: 20, // Low quality fallback
+      detectedPatterns: []
     };
   }
 
@@ -372,14 +395,37 @@ export class PracticalRepositorySummarizer {
     
     // README description優先（より詳細に解析）
     if (readmeAnalysis.description && readmeAnalysis.description.length > 20) {
-      // README descriptionをそのまま使うのではなく、より具体的に解釈
-      const desc = readmeAnalysis.description;
+      // README descriptionを適切に処理して要約形式にする
+      let desc = readmeAnalysis.description;
+      
+      // Markdownヘッダーを除去
+      desc = desc.replace(/^#{1,6}\s+/gm, '').trim();
+      
+      // 複数行の場合は最初の実質的な内容のある文を使用
+      const sentences = desc.split(/\n+/).filter(s => s.trim().length > 10);
+      if (sentences.length > 0) {
+        desc = sentences[0].trim();
+      }
+      
+      // 長すぎる場合は適切な長さに切り取り
+      if (desc.length > 150) {
+        desc = desc.substring(0, 147) + '...';
+      }
+      
+      // 具体的なカテゴリ補完
       if (desc.toLowerCase().includes('tool') || desc.toLowerCase().includes('utility')) {
         return `${desc}（開発・運用効率化のためのツール）`;
       }
       if (desc.toLowerCase().includes('library') || desc.toLowerCase().includes('framework')) {
         return `${desc}（開発者向けのライブラリ・フレームワーク）`;
       }
+      if (desc.toLowerCase().includes('server') || desc.toLowerCase().includes('api')) {
+        return `${desc}（サーバー・API実装）`;
+      }
+      if (desc.toLowerCase().includes('protocol') || desc.toLowerCase().includes('sdk')) {
+        return `${desc}（通信プロトコル・SDK実装）`;
+      }
+      
       return desc;
     }
     
@@ -639,22 +685,45 @@ export class PracticalRepositorySummarizer {
   }
 
   private identifyCoreFunction(repository: any, readmeAnalysis: any, techStack: any[]): string {
-    console.log('🎯 Core function analysis:', {
-      features: readmeAnalysis.features,
+    console.log('🎯 Enhanced core function analysis:', {
+      purpose: readmeAnalysis.purpose,
+      category: readmeAnalysis.category,
+      features: readmeAnalysis.features?.slice(0, 3),
+      projectType: readmeAnalysis.projectType,
+      analysisQuality: readmeAnalysis.analysisQuality,
       techStack: techStack.slice(0, 5).map(t => `${t.name}(${t.category})`)
     });
     
-    // README features から核心機能を抽出（より詳細に）
+    // 1. Enhanced README purpose (最優先)
+    if (readmeAnalysis.purpose && readmeAnalysis.purpose.length > 20 && 
+        !readmeAnalysis.purpose.includes('repository')) {
+      return readmeAnalysis.purpose;
+    }
+    
+    // 2. Enhanced README description (次点)
+    if (readmeAnalysis.description && readmeAnalysis.description.length > 30 && 
+        !readmeAnalysis.description.includes('repository')) {
+      return readmeAnalysis.description;
+    }
+    
+    // 3. Project type + features combination
+    if (readmeAnalysis.projectType && readmeAnalysis.features && readmeAnalysis.features.length > 0) {
+      const mainFeature = readmeAnalysis.features[0];
+      if (mainFeature.length > 15) {
+        return `${readmeAnalysis.projectType}: ${mainFeature}`;
+      }
+    }
+    
+    // 4. README features から核心機能を抽出
     if (readmeAnalysis.features && readmeAnalysis.features.length > 0) {
       const mainFeature = readmeAnalysis.features[0];
       if (mainFeature.length > 100) {
-        // 長すぎる場合は要約
-        return mainFeature.substring(0, 100) + '...';
+        return mainFeature.substring(0, 97) + '...';
       }
       return mainFeature;
     }
     
-    // README useCasesから推論
+    // 5. README useCasesから推論
     if (readmeAnalysis.useCases && readmeAnalysis.useCases.length > 0) {
       return `主な用途: ${readmeAnalysis.useCases[0]}`;
     }

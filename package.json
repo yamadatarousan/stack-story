@@ -25,12 +25,14 @@
     "@reactflow/core": "^11.11.4",
     "@reactflow/minimap": "^11.7.14",
     "@reactflow/node-resizer": "^2.2.14",
+    "@types/yauzl": "^2.10.3",
     "adm-zip": "^0.5.16",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.525.0",
     "next": "15.3.5",
     "next-auth": "^4.24.11",
+    "node-stream-zip": "^1.15.0",
     "octokit": "^5.0.3",
     "openai": "^5.8.2",
     "prisma": "^6.11.1",
@@ -38,7 +40,8 @@
     "react-dom": "^19.0.0",
     "reactflow": "^11.11.4",
     "semver": "^7.7.2",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "yauzl": "^3.2.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
